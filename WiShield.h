@@ -37,6 +37,7 @@
 
 extern "C" {
 	#include "config.h"
+	#include "spi.h"
 }
 
 class WiShield

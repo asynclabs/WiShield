@@ -307,10 +307,13 @@ void stack_process()
 				}
 			}
 
+			// if we found an active connection
 			if (stack_state != STACK_ST_TCP) {
 				break;
 			}
 
+			// if we did not find any active connection and this is not a SYN request
+			// send out a RESET
 			if((TCPBUF->flags & TCP_CTL) != TCP_SYN) {
 				stack_state = STACK_ST_RESET;
 				break;
@@ -325,7 +328,7 @@ void stack_process()
 				}
 			}
 
-			// send reset
+			// if no servers listening, drop packet and send a RESET
 			if (stack_state == STACK_ST_TCP) {
 				stack_state = STACK_ST_RESET;
 			}
@@ -341,12 +344,10 @@ void stack_process()
 			TCPBUF->flags = TCP_RST | TCP_ACK;
 			TCPBUF->dataOffset = 5 << 4;
 
+			// swap SEQ number and ACK number
 			tmp32 = TCPBUF->seqNum;
 			TCPBUF->seqNum = TCPBUF->ackNum;
-			TCPBUF->ackNum = tmp32;
-
-			tmp32 = HTOZGL(TCPBUF->ackNum);
-			tmp32++;
+			tmp32++;	// incrementing ACK number
 			TCPBUF->ackNum = HTOZGL(tmp32);
 
 			tmp16 = TCPBUF->srcPort;
@@ -356,7 +357,7 @@ void stack_process()
 			IPBUF->destIPAddr = IPBUF->srcIPAddr;
 			IPBUF->srcIPAddr = local_ip;
 
-			stack_pkt_len = 20+20;
+			stack_pkt_len = 20+20;		// FIXME : replace with #defines
 
 			stack_state = STACK_ST_TCP_SEND_NO_CONN;
 			break;
