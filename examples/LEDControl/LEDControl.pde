@@ -43,7 +43,7 @@ unsigned char security_passphrase_len;
 // transmit is limited to 446 bytes. Larger webpages can be broken down into
 // smaller chunks and transmitted as shown in the code below to overcome this
 // limitation
-const prog_char webpage[] PROGMEM = {"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<center><p><h1>LED control</h1></p><p><a href=\"0\">LED 0</a><br><a href=\"1\">LED 1</a></p></center>"};
+const prog_char webpage[] PROGMEM = {"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<center><p><h1>LED control</h1></p><p><a href=\"0\">LED 0</a><br><a href=\"1\">LED 1</a></p></center> "};
 const prog_char webpage1[] PROGMEM = {"<center><p><h1>This is line 2</h1></p></center>"};
 unsigned int webpage_len;
 
@@ -86,35 +86,37 @@ void loop()
 			// process data
 			Serial.println(data);
            
-			if (memcmp(data, "GET /", 4) == 0) {
-				// copy data into TX buffer
-				memcpy_P(data, webpage, webpage_len);
-				WiFi.send_data(webpage_len);
-
-				// indicate this was the last chunk for TX
-				WiFi.set_more_data(1);
-
-				switch(data[6]) {
+			if (memcmp(data, "GET /", 5) == 0) {
+				switch(data[5]) {
                    	case '0':
                    		// toggle LED 0
                    		// Analog In port 0 on the Duemilanove
                    		LED0_toggle();
+				WiFi.send_data(webpage_len);
                    		break;
                    	case '1':
                    		// toggle LED 1
                    		// Analog In port 1 on the Duemilanove
                    		LED1_toggle();
+				WiFi.send_data(webpage_len);
                    		break;
                    	case ' ':
                    		// browsed requested index.html
                    		// just send main page
+				WiFi.send_data(webpage_len);
                    		break;
                    	default:
                    		// unknown request, do not respond
 						WiFi.send_data(0);
-						WiFi.set_more_data(1);
                    		break;
 				}
+
+				// copy data into TX buffer
+				memcpy_P(data, webpage, webpage_len);
+
+				// indicate this was the last chunk for TX
+				WiFi.set_more_data(1);
+
 			}
            
 			// we run the stack task again here to allow the stack
