@@ -1,4 +1,3 @@
-
 /******************************************************************************
 
   Filename:		spi.h
@@ -131,8 +130,8 @@
 #define LED2_off()		(LED0_PORT &= ~LED2_BIT)
 #define LED3_off()		(LED0_PORT &= ~LED3_BIT)
 
-#define LED0_toggle()	((LED0_PORT & LED0_BIT)?0:1)
-#define LED1_toggle()	((LED0_PORT & LED1_BIT)?0:1)
-#define LED3_toggle()	((LED0_PORT & LED3_BIT)?0:1)
+#define LED0_toggle()	((LED0_PORT & LED0_BIT)?(LED0_PORT &= ~LED0_BIT):(LED0_PORT |= LED0_BIT))
+#define LED1_toggle()	((LED0_PORT & LED1_BIT)?(LED0_PORT &= ~LED1_BIT):(LED0_PORT |= LED1_BIT))
+#define LED3_toggle()	((LED0_PORT & LED3_BIT)?(LED0_PORT &= ~LED3_BIT):(LED0_PORT |= LED3_BIT))
 
 #endif /* SPI_H_ */
