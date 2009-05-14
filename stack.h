@@ -58,7 +58,8 @@ typedef struct _ip_conn {
 #define SOCK_SYNRECV		   	0x02
 #define SOCK_ESTABLISHED		0x03
 #define SOCK_LAST_ACK			0x04
-#define SOCK_FIN_WAIT			0x05
+#define SOCK_FIN_WAIT_1			0x05
+#define SOCK_FIN_WAIT_2			0x06
 
 #define ICMP_ECHO_REPLY 0
 #define ICMP_ECHO       8

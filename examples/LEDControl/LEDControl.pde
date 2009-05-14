@@ -92,31 +92,30 @@ void loop()
                    		// toggle LED 0
                    		// Analog In port 0 on the Duemilanove
                    		LED0_toggle();
-				WiFi.send_data(webpage_len);
+                   		WiFi.send_data(webpage_len);
                    		break;
                    	case '1':
                    		// toggle LED 1
                    		// Analog In port 1 on the Duemilanove
                    		LED1_toggle();
-				WiFi.send_data(webpage_len);
+                   		WiFi.send_data(webpage_len);
                    		break;
                    	case ' ':
-                   		// browsed requested index.html
+                   		// browser requested index.html
                    		// just send main page
-				WiFi.send_data(webpage_len);
+                   		WiFi.send_data(webpage_len);
                    		break;
                    	default:
                    		// unknown request, do not respond
 						WiFi.send_data(0);
                    		break;
 				}
-
+				
 				// copy data into TX buffer
 				memcpy_P(data, webpage, webpage_len);
-
+				
 				// indicate this was the last chunk for TX
 				WiFi.set_more_data(1);
-
 			}
            
 			// we run the stack task again here to allow the stack

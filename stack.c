@@ -418,6 +418,7 @@ void stack_process()
 			ip_conn[sock_num].rport = TCPBUF->srcPort;
 			ip_conn[sock_num].ripaddr = IPBUF->srcIPAddr;
 			ip_conn[sock_num].state = SOCK_SYNRECV;
+			iss++;
 			ip_conn[sock_num].snd_nxt = HTOZGL(iss);
 			ip_conn[sock_num].len = 1;
 
@@ -480,7 +481,8 @@ void stack_process()
 				/* In SYN_RCVD we have sent out a SYNACK in response to a SYN,
 				 * and we are waiting for an ACK that acknowledges the data
 				 * we sent out the last time. */
-				if(ip_conn[sock_num].len == 0) {
+				//if(ip_conn[sock_num].len == 0) {
+				if(ip_flags & FLAG_ACKED) {
 					ip_conn[sock_num].state = SOCK_ESTABLISHED;
 					ip_conn[sock_num].len = 0;
 					if(stack_app_data_len > 0) {
@@ -500,7 +502,7 @@ void stack_process()
 					break;
 				}
 				else {
-					stack_state = STACK_ST_TCP_SEND_ACK;
+					stack_state = STACK_ST_DROP;
 				}
 				break;
 			case SOCK_ESTABLISHED:
@@ -540,13 +542,24 @@ void stack_process()
 				 * and we flag this by setting the FLAG_DATA_AVAILABLE flag and
 				 * update the sequence number we acknowledge. */
 				if(stack_app_data_len > 0) {
-					ip_flags |= FLAG_DATA_AVAILABLE;
 					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-					tmp32 = tmp32 + stack_app_data_len;
-					ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
+					if (HTOZGL(TCPBUF->seqNum) < tmp32) {
+						// send ACK
+						stack_pkt_len = IP_TCP_HEADER_LEN;
+						TCPBUF->flags = TCP_ACK;
+						stack_state = STACK_ST_TCP_SEND_NO_OPTS;
+						break;
+					}
+					else {
+						ip_flags |= FLAG_DATA_AVAILABLE;
+						//tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
+						tmp32 = tmp32 + stack_app_data_len;
+						ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
+					}
 				}
 
-				if(ip_flags & (FLAG_DATA_AVAILABLE | FLAG_ACKED)) {
+				//if(ip_flags & (FLAG_DATA_AVAILABLE | FLAG_ACKED)) {
+				if(ip_flags & FLAG_DATA_AVAILABLE) {
 					stack_state = STACK_ST_APP_SEND;
 					done = 1;
 					break;
@@ -567,11 +580,29 @@ void stack_process()
 					ip_conn[sock_num].snd_nxt = 0;
 				}
 				break;
-			case SOCK_FIN_WAIT:
+			case SOCK_FIN_WAIT_1:
+#if 0
 				if(stack_app_data_len > 0) {
 					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
 					tmp32 = tmp32 + stack_pkt_len;
 					ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
+				}
+#endif
+				if(stack_app_data_len > 0) {
+					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
+					if (HTOZGL(TCPBUF->seqNum) < tmp32) {
+						// send ACK
+						stack_pkt_len = IP_TCP_HEADER_LEN;
+						TCPBUF->flags = TCP_ACK;
+						stack_state = STACK_ST_TCP_SEND_NO_OPTS;
+						break;
+					}
+					else {
+						//ip_flags |= FLAG_DATA_AVAILABLE;
+						//tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
+						tmp32 = tmp32 + stack_app_data_len;
+						ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
+					}
 				}
 
 				if(TCPBUF->flags & TCP_FIN) {
@@ -601,12 +632,13 @@ void stack_process()
 			        ip_conn[sock_num].len = stack_app_data_len;
 			        stack_app_data_len = 0;
 			        stack_pkt_len = ip_conn[sock_num].len + IP_TCP_HEADER_LEN;
-			        TCPBUF->flags = TCP_ACK | TCP_PSH | TCP_FIN;
+			        //TCPBUF->flags = TCP_ACK | TCP_PSH | TCP_FIN;
+			        TCPBUF->flags = TCP_ACK | TCP_PSH;
 
-			        ip_conn[sock_num].state = SOCK_FIN_WAIT;
+			        //ip_conn[sock_num].state = SOCK_FIN_WAIT_1;
 
 			        stack_state = STACK_ST_TCP_SEND_NO_OPTS;
-			        break;
+			        //break;
 			     }
 			}
 			else {
@@ -616,19 +648,31 @@ void stack_process()
 					stack_pkt_len = IP_TCP_HEADER_LEN;
 					TCPBUF->flags = TCP_ACK;
 					stack_state = STACK_ST_TCP_SEND_NO_OPTS;
-					break;
+					//break;
 				}
-
+#if 0
 				if(app_flags & APP_FLAG_CLOSE) {
 					ip_conn[sock_num].len = 1;
-					ip_conn[sock_num].state = SOCK_FIN_WAIT;
-					TCPBUF->flags = TCP_FIN | TCP_ACK;
+					ip_conn[sock_num].state = SOCK_FIN_WAIT_1;
+					//TCPBUF->flags = TCP_FIN | TCP_ACK;
+					TCPBUF->flags |= TCP_FIN;
 					stack_state = STACK_ST_TCP_SEND_NO_DATA;
 					break;
 				}
+#endif
 			}
 
-			stack_state = STACK_ST_DROP;
+			if(app_flags & APP_FLAG_CLOSE) {
+				ip_conn[sock_num].len++;
+				ip_conn[sock_num].state = SOCK_FIN_WAIT_1;
+				//TCPBUF->flags = TCP_FIN | TCP_ACK;
+				TCPBUF->flags |= TCP_FIN;
+				//stack_state = STACK_ST_TCP_SEND_NO_DATA;
+				break;
+			}
+
+			if (stack_state == STACK_ST_APP_SEND)
+				stack_state = STACK_ST_DROP;
 			break;
 		case STACK_ST_DROP:
 			// drop IP packet
