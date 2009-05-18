@@ -177,7 +177,7 @@ U16 stack_app_data();
 void stack_set_app_data(U16 len);
 void stack_set_app_more_data(U8 flag);
 void stack_process();
-U8 validate_chksum(U16* pWord, U16 len, U16* pOther, U16 otherLen, U8 odd);
-U16 calc_chksum(U16* pWord, U16 len, U16* pOther, U16 otherLen, U8 odd);
+U8 validate_chksum(U16* pWord, U16 len, U8 protocol);
+U16 calc_chksum(U16* pWord, U16 len, U8 protocol);
 
 #endif /* STACK_H_ */

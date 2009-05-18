@@ -76,33 +76,34 @@ U8 socket(U8 protocol, U16 port)
 	return 255;
 }
 
-U8 validate_chksum(U16* pWord, U16 len, U16* pOther, U16 otherLen, U8 odd)
+U8 validate_chksum(U16* pWord, U16 len, U8 protocol)
 {
 	U32 sum = 0;
 	U16 i;
 	U8 retVal = 0;
 
-	for (i=0; i < len; i++)
+	for (i=0; i < len/2; i++)	// sum 16 bits at a time
 	{
 		sum += pWord[i];
 		while (sum>>16)
 			sum = (sum & 0xffff) + (sum >> 16);
 	}
 
-	if (odd)
+	if (len&0x0001)	// if odd
 	{
-		sum += (pWord[i] & 0xff00);
+		sum += (pWord[i] & 0x00ff);
 		while (sum>>16)
 			sum = (sum & 0xffff) + (sum >> 16);
 	}
 
-	if (otherLen)
-		for (i=0; i < otherLen; i++)
-		{
-			sum += pOther[i];
+	if (protocol == 1) {	// if TCP checksum
+		U16* pPseudo = (U16*)&pseudoTCP;
+		for (i=0; i<6; i++) {
+			sum += pPseudo[i];
 			while (sum>>16)
 				sum = (sum & 0xffff) + (sum >> 16);
 		}
+	}
 
 	if (sum == 0xffff)
 		retVal = 1;
@@ -110,32 +111,34 @@ U8 validate_chksum(U16* pWord, U16 len, U16* pOther, U16 otherLen, U8 odd)
 	return retVal;
 }
 
-U16 calc_chksum(U16* pWord, U16 len, U16* pOther, U16 otherLen, U8 odd)
+U16 calc_chksum(U16* pWord, U16 len, U8 protocol)
 {
 	U32 sum = 0;
 	U16 i;
 
-	for (i=0; i < len; i++)
+	for (i=0; i < len/2; i++)
 	{
 		sum += pWord[i];
 		while (sum>>16)
 			sum = (sum & 0xffff) + (sum >> 16);
 	}
 
-	if (odd)
+	if (len&0x0001)
 	{
-		sum += (pWord[i] & 0xff00);
+		sum += (pWord[i] & 0x00ff);
 		while (sum>>16)
 			sum = (sum & 0xffff) + (sum >> 16);
 	}
 
-	if (otherLen)
-		for (i=0; i < otherLen; i++)
+	if (protocol == 1) {
+		U16* pPseudo = (U16*)&pseudoTCP;
+		for (i=0; i < 6; i++)
 		{
-			sum += pOther[i];
+			sum += pPseudo[i];
 			while (sum>>16)
 				sum = (sum & 0xffff) + (sum >> 16);
 		}
+	}
 
 	return ((U16)~sum);
 }
@@ -226,7 +229,7 @@ void stack_process()
 			}
 
 			// Validate the IP checksum
-			if(!validate_chksum((U16*)IPBUF, (IPBUF->versionHdrLen & 0x0f)*2, NULL, 0, 0)) { /* Compute and check the IP header checksum. */
+			if(!validate_chksum((U16*)IPBUF, (IPBUF->versionHdrLen & 0x0f)*4, 0)) {
 				stack_state = STACK_ST_DROP;
 				break;
 			}
@@ -290,10 +293,10 @@ void stack_process()
 			pseudoTCP.len = HSTOZGS(ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4));
 
 			// Validate TCP checksum
-			//if(!validate_chksum((U16*)TCPBUF, (ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4))/2, (U16*)&pseudoTCP, 6, (ZGSTOHS(pseudoTCP.len) & 0x0001)?1:0)) {
-			//	stack_state = STACK_ST_DROP;
-			//	break;
-			//}
+			if(!validate_chksum((U16*)TCPBUF, (ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4)), 1)) {
+				stack_state = STACK_ST_DROP;
+				break;
+			}
 
 			// Scan for active connections
 			for(i = 0; i < MAX_SOCK_NUM; i++) {
@@ -392,7 +395,7 @@ void stack_process()
 			pseudoTCP.len = HSTOZGS(ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4));
 
 			// Calculate TCP checksum
-			TCPBUF->chksum = calc_chksum((U16*)TCPBUF, (ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4))/2, (U16*)&pseudoTCP, 6, (ZGSTOHS(pseudoTCP.len) & 0x0001)?1:0);
+			TCPBUF->chksum = calc_chksum((U16*)TCPBUF, (ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4)), 1);
 		case STACK_ST_SEND_NO_LEN:
 			IPBUF->versionHdrLen = 0x45;
 			IPBUF->tos = 0;
@@ -401,7 +404,7 @@ void stack_process()
 			IPBUF->id = HTONS(ipid);
 
 			// Calculate IP checksum
-			IPBUF->hdrChkSum = calc_chksum((U16*)IPBUF, (IPBUF->versionHdrLen & 0x0f)*2, NULL, 0, 0);
+			IPBUF->hdrChkSum = calc_chksum((U16*)IPBUF, (IPBUF->versionHdrLen & 0x0f)*4, 0);
 		case STACK_ST_SEND:
 			// packet processing done
 			// flip src and dst MAC address
