@@ -1,5 +1,21 @@
-WiShield library and TCP/IP stack files
+WiShield library and TCP/IP stack files for the WiShield 1.0 wireless devices
 
-Version 1.0.0.0
+Async Labs Inc.
+www.asynclabs.com
 
+-------------------------------------------------------------------------------
+Version 1.0.0
+-------------------------------------------------------------------------------
+This release includes the WiShield and TCP/IP stack files to be used with the
+Async Labs WiShield 1.0 wireless devices.
+
+The release includes:
+- Driver for ZeroG G2100 series WiFi device (for download instructions, see:
+  http://asynclabs.com/wiki/)
+- Simplified TCP/IP stack for use with the WiShield
+- Sample WebServer sketch demonstrating the implementation of a simple
+  webserver to serve up a webpage when requested from a client browser
+  application
+- Sample LEDControl sketch demonstrating the implementation of a control
+  application using the webserver mode of the WiShield library.
 
