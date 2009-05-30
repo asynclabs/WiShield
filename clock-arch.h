@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		clock-arch.h
+  Description:	Timer routine file
 
  ******************************************************************************
 
@@ -28,39 +28,20 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial port
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
-}
+#ifndef __CLOCK_ARCH_H__
+#define __CLOCK_ARCH_H__
 
-#include "WProgram.h"
-#include "WiShield.h"
+#include <stdint.h>
 
-void WiShield::init()
-{
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+typedef uint32_t clock_time_t;
+#define CLOCK_CONF_SECOND		(clock_time_t)1000
+								//(F_CPU / (1024*255)), this cannot be used as it gives overflows
+								//Freqency divided prescaler and counter register size
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
-	}
+#include "clock.h"
 
-	stack_init();
-}
-
-void WiShield::run()
-{
-	stack_process();
-	zg_drv_process();
-}
-
-WiShield WiFi;
+#endif /* __CLOCK_ARCH_H__ */

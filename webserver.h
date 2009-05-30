@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		webserver.h
+  Description:	Webserver app for the WiShield 1.0
 
  ******************************************************************************
 
@@ -28,39 +28,24 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial version
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
-}
+#ifndef __WEBSERVER_H__
+#define __WEBSERVER_H__
+#include "psock.h"
 
-#include "WProgram.h"
-#include "WiShield.h"
+typedef struct webserver_state {
+	struct psock p;
+	char inputbuf[10];
+} uip_tcp_appstate_t;
 
-void WiShield::init()
-{
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+void webserver_appcall(void);
+#ifndef UIP_APPCALL
+#define UIP_APPCALL webserver_appcall
+#endif /* UIP_APPCALL */
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
-	}
+void webserver_init(void);
 
-	stack_init();
-}
-
-void WiShield::run()
-{
-	stack_process();
-	zg_drv_process();
-}
-
-WiShield WiFi;
+#endif /* __WEBSERVER_H__ */

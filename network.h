@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		network.h
+  Description:	Network interface for the WiShield 1.0
 
  ******************************************************************************
 
@@ -28,39 +28,26 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial version
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
-}
+#ifndef __NETWORK_H__
+#define __NETWORK_H__
 
-#include "WProgram.h"
-#include "WiShield.h"
+/*Initialize the network*/
+void network_init(void);
 
-void WiShield::init()
-{
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+/*Read from the network, returns number of read bytes*/
+unsigned int network_read(void);
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
-	}
+/*Send using the network*/
+void network_send(void);
 
-	stack_init();
-}
+/*Sets the MAC address of the device*/
+void network_set_MAC(uint8_t* mac);
 
-void WiShield::run()
-{
-	stack_process();
-	zg_drv_process();
-}
+/*Gets the MAC address of the device*/
+void network_get_MAC(uint8_t* mac);
 
-WiShield WiFi;
+#endif /* __NETWORK_H__ */

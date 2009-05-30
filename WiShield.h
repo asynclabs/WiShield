@@ -29,6 +29,7 @@
    Author               Date        Comment
   ---------------------------------------------------------------
    AsyncLabs			05/01/2009	Initial version
+   AsyncLabs			05/29/2009	Adding support for new library
 
  *****************************************************************************/
 
@@ -38,19 +39,13 @@
 extern "C" {
 	#include "config.h"
 	#include "spi.h"
+	extern unsigned char webclient_get(char *host, unsigned int port, char *file);
 }
 
-class WiShield
-{
-	private:
+class WiShield {
 	public:
 		void init();
-		void driver_task();
-		void stack_task();
-		void server_listen(U16 port);
-		U8* data_available(U16* app_len);
-		void send_data(U16 app_len);
-		void set_more_data(U8 flag);
+		void run();
 };
 
 extern WiShield WiFi;

@@ -4,18 +4,27 @@ Async Labs Inc.
 www.asynclabs.com
 
 -------------------------------------------------------------------------------
-Version 1.0.0
+Version 1.1.0
 -------------------------------------------------------------------------------
-This release includes the WiShield and TCP/IP stack files to be used with the
-Async Labs WiShield 1.0 wireless devices.
+Changes:
+- The WiShield library now uses a new, more stable TCP/IP stack. The library
+  includes a port of the uIP stack.
+- Server and client modes supported in the TCP/IP stack.
+- The limitation of 446 bytes is removed. Larger sized packets can be
+  transmitted and received but will have to be broken down into smaller
+  sized chunks which are <= 346 bytes.
+- Sample WebServer sketch modified to use the new stack to serve up simple
+  webpages
+- The stack provides an implementation of the socket interface which can be
+  used to transmit or receive data
 
-The release includes:
-- Driver for ZeroG G2100 series WiFi device (for download instructions, see:
-  http://asynclabs.com/wiki/)
-- Simplified TCP/IP stack for use with the WiShield
-- Sample WebServer sketch demonstrating the implementation of a simple
-  webserver to serve up a webpage when requested from a client browser
-  application
-- Sample LEDControl sketch demonstrating the implementation of a control
-  application using the webserver mode of the WiShield library.
+New features:
+- Sample WebClient sketch added which demonstrates the operation of sending
+  status updates to a Twitter.com account
+- ARP client added to periodically send ARP packets to the AP. This was done
+  to prevent certain APs from disconnecting the device due to long periods of
+  inactivity
+
+Known issues:
+None
 

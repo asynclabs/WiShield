@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		global-conf.h
+  Description:	Stack configuration for the WiShield 1.0
 
  ******************************************************************************
 
@@ -28,39 +28,18 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial version
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
-}
+//Project specific configurations
+#ifndef __GLOBAL_CONF_H__
+#define __GLOBAL_CONF_H__
 
-#include "WProgram.h"
-#include "WiShield.h"
+//Define frequency
+//#define F_CPU 12500000UL
 
-void WiShield::init()
-{
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+//Include uip.h gives all the uip configurations in uip-conf.h
+#include "uip.h"
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
-	}
-
-	stack_init();
-}
-
-void WiShield::run()
-{
-	stack_process();
-	zg_drv_process();
-}
-
-WiShield WiFi;
+#endif /*__GLOBAL_CONF_H__*/

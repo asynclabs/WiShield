@@ -29,6 +29,7 @@
    Author               Date        Comment
   ---------------------------------------------------------------
    AsyncLabs			05/01/2009	Initial version
+   AsyncLabs			05/29/2009	Adding support for new library
 
  *****************************************************************************/
 
@@ -37,9 +38,9 @@
 
 #include "types.h"
 
-#define IP_ADDR(a,b,c,d)	((((U32)d)<<24)|(((U32)c)<<16)|(((U32)b)<<8)|(a))
-
-extern U32 local_ip;
+extern U8 local_ip[];
+extern U8 gateway_ip[];
+extern U8 subnet_mask[];
 extern const prog_char ssid[];
 extern U8 ssid_len;
 extern const prog_char security_passphrase[];
@@ -50,10 +51,7 @@ extern U8 wireless_mode;
 extern prog_uchar wep_keys[];
 
 extern const prog_char webpage[];
-
-extern U8 buf[];
-
-#define GBLBUF		((U8*)buf)
+extern const prog_char twitter[];
 
 #define WIRELESS_MODE_INFRA	1
 #define WIRELESS_MODE_ADHOC	2

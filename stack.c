@@ -2,16 +2,13 @@
 /******************************************************************************
 
   Filename:		stack.c
-  Description:	Simple TCP/IP stack for use with WiShield 1.0
+  Description:	Stack process for the WiShield 1.0
 
  ******************************************************************************
 
   TCP/IP stack and driver for the WiShield 1.0 wireless devices
 
   Copyright(c) 2009 Async Labs Inc. All rights reserved.
-
-  The TCP/IP stack is influenced by
-  the uIP stack (c) Adam Dunkels <adam@dunkels.com>.
 
   This program is free software; you can redistribute it and/or modify it
   under the terms of version 2 of the GNU General Public License as
@@ -31,660 +28,118 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
+   AsyncLabs			05/29/2009	Initial version
 
-******************************************************************************/
+ *****************************************************************************/
 
-#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <avr/io.h>
+
+#include "timer.h"
+#include "global-conf.h"
+#include "uip_arp.h"
+#include "network.h"
 #include "types.h"
 #include "config.h"
 #include "g2100.h"
-#include "stack.h"
 #include "spi.h"
 
-// The one and only buffer
-// used by the driver for management
-// used by the stack for all packet processing
-// used by the application to send and receive data
-U8 buf[500];
+#include <string.h>
+#define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
-static U16 ipid;
-static U32 iss;
-static tTCPPseudoHdr pseudoTCP;
+static struct timer periodic_timer, arp_timer, self_arp_timer;
 
-static ip_conn_t ip_conn[MAX_SOCK_NUM];
-
-static U8 stack_state;
-static U16 stack_pkt_len;
-static U8 sock_num;
-static U16 stack_app_data_len;
-static U8 ip_flags;
-static U8 app_flags;
-
-U8 socket(U8 protocol, U16 port)
+void stack_init(void)
 {
-	U8 sock;
+	uip_ipaddr_t ipaddr;
 
-	for (sock = 0; sock < MAX_SOCK_NUM; sock++) {
-		if (ip_conn[sock].state == SOCK_CLOSED) {
-			ip_conn[sock].state = SOCK_LISTEN;
-			ip_conn[sock].lport = HTONS(port);
-			return sock;
-		}
-	}
+	struct uip_eth_addr mac;
 
-	return 255;
-}
+	U8* mac_addr = zg_get_mac();
 
-U8 validate_chksum(U16* pWord, U16 len, U8 protocol)
-{
-	U32 sum = 0;
-	U16 i;
-	U8 retVal = 0;
+	mac.addr[0] = mac_addr[0];
+	mac.addr[1] = mac_addr[1];
+	mac.addr[2] = mac_addr[2];
+	mac.addr[3] = mac_addr[3];
+	mac.addr[4] = mac_addr[4];
+	mac.addr[5] = mac_addr[5];
 
-	for (i=0; i < len/2; i++)	// sum 16 bits at a time
-	{
-		sum += pWord[i];
-		while (sum>>16)
-			sum = (sum & 0xffff) + (sum >> 16);
-	}
+	timer_set(&periodic_timer, CLOCK_SECOND / 2);
+	timer_set(&arp_timer, CLOCK_SECOND * 10);
+	timer_set(&self_arp_timer, CLOCK_SECOND * 30);
 
-	if (len&0x0001)	// if odd
-	{
-		sum += (pWord[i] & 0x00ff);
-		while (sum>>16)
-			sum = (sum & 0xffff) + (sum >> 16);
-	}
+	uip_init();
 
-	if (protocol == 1) {	// if TCP checksum
-		U16* pPseudo = (U16*)&pseudoTCP;
-		for (i=0; i<6; i++) {
-			sum += pPseudo[i];
-			while (sum>>16)
-				sum = (sum & 0xffff) + (sum >> 16);
-		}
-	}
+	uip_setethaddr(mac);
 
-	if (sum == 0xffff)
-		retVal = 1;
-
-	return retVal;
-}
-
-U16 calc_chksum(U16* pWord, U16 len, U8 protocol)
-{
-	U32 sum = 0;
-	U16 i;
-
-	for (i=0; i < len/2; i++)
-	{
-		sum += pWord[i];
-		while (sum>>16)
-			sum = (sum & 0xffff) + (sum >> 16);
-	}
-
-	if (len&0x0001)
-	{
-		sum += (pWord[i] & 0x00ff);
-		while (sum>>16)
-			sum = (sum & 0xffff) + (sum >> 16);
-	}
-
-	if (protocol == 1) {
-		U16* pPseudo = (U16*)&pseudoTCP;
-		for (i=0; i < 6; i++)
-		{
-			sum += pPseudo[i];
-			while (sum>>16)
-				sum = (sum & 0xffff) + (sum >> 16);
-		}
-	}
-
-	return ((U16)~sum);
-}
-
-U16 stack_app_data()
-{
-	return stack_app_data_len;
-}
-
-void stack_set_app_data(U16 len)
-{
-	stack_app_data_len = len;
-}
-
-void stack_set_app_more_data(U8 flag)
-{
-	app_flags = flag;
-}
-
-void stack_process()
-{
-	U16 tmp16;
-	U32 tmp32;
-
-	U8 done = 0;
-
-	do {
-		switch (stack_state) {
-		case STACK_ST_IDLE:
-			if (zg_get_rx_status()) {
-				U16 protocol = HTONS((U16)*((U16*)&GBLBUF[12]));
-
-				if (protocol == 0x0806) {
-					stack_state = STACK_ST_ARP;
-					break;
-				}
-
-				if (protocol == 0x0800) {
-					stack_state = STACK_ST_IP;
-					break;
-				}
-			}
-
-			stack_state = STACK_ST_DROP;
-			break;
-		case STACK_ST_ARP:
-		{
-			tARPPacket* pARP = (tARPPacket*)&GBLBUF[14];
-
-			if (pARP->operation == HTONS(1) && pARP->targetIPAddr == local_ip)
-			{
-				// build ARP Response
-				memcpy(&GBLBUF[0], &GBLBUF[6], 6);
-				memcpy(&GBLBUF[6], zg_get_mac(), 6);
-				pARP->operation = HSTOZGS(2);
-				memcpy(pARP->targetAddr, pARP->senderAddr, 6);
-				pARP->targetIPAddr = pARP->senderIPAddr;
-				memcpy(pARP->senderAddr, zg_get_mac(), 6);
-				pARP->senderIPAddr = local_ip;
-
-				// send ARP Response
-				zg_set_buf(GBLBUF, 42);
-				zg_set_tx_status(1);
-			}
-
-			stack_state = STACK_ST_DONE;
-			break;
-		}
-		case STACK_ST_IP:
-			// IP version check
-			if(IPBUF->versionHdrLen != 0x45) {
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			// We cannot handle fragmented packets
-			if((IPBUF->flagsOffset & HTONS(0x2000)) != 0) {
-				// fragmented packets not supported
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			// Verify IP address
-			// FIXME : need to check for broadcast too
-			if(IPBUF->destIPAddr != local_ip) {
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			// Validate the IP checksum
-			if(!validate_chksum((U16*)IPBUF, (IPBUF->versionHdrLen & 0x0f)*4, 0)) {
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			// Is this a TCP packet ?
-			if(IPBUF->protocol == 0x06) {
-				stack_state = STACK_ST_TCP;
-				break;
-			}
-
-			// Is this a UDP packet ?
-			if(IPBUF->protocol == 0x11) {
-				// UDP support
-				stack_state = STACK_ST_UDP;
-				break;
-			}
-
-			/* ICMPv4 packet */
-			if(IPBUF->protocol == 0x01) {
-				stack_state = STACK_ST_ICMP;
-				break;
-			}
-
-			stack_state = STACK_ST_DROP;
-			break;
-		case STACK_ST_ICMP:
-			// process ICMP
-			if(ICMPBUF->type != ICMP_ECHO) {
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			ICMPBUF->type = ICMP_ECHO_REPLY;
-
-			if(ICMPBUF->chkSum >= HTONS(0xffff - (ICMP_ECHO << 8))) {
-				ICMPBUF->chkSum += HTONS(ICMP_ECHO << 8) + 1;
-			} else {
-				ICMPBUF->chkSum += HTONS(ICMP_ECHO << 8);
-			}
-
-			IPBUF->destIPAddr = IPBUF->srcIPAddr;
-			IPBUF->srcIPAddr = local_ip;
-
-			stack_pkt_len = ZGSTOHS(IPBUF->totalLen);
-
-			stack_state = STACK_ST_SEND;
-			break;
-		case STACK_ST_UDP:
-			// not supported
-			stack_state = STACK_ST_DROP;
-			break;
-		case STACK_ST_TCP:
-		{
-			// process TCP
-			U8 i;
-
-			pseudoTCP.srcIPAddr = IPBUF->srcIPAddr;
-			pseudoTCP.destIPAddr = IPBUF->destIPAddr;
-			pseudoTCP.zeros = 0;
-			pseudoTCP.protocol = 6;
-			pseudoTCP.len = HSTOZGS(ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4));
-
-			// Validate TCP checksum
-			if(!validate_chksum((U16*)TCPBUF, (ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4)), 1)) {
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			// Scan for active connections
-			for(i = 0; i < MAX_SOCK_NUM; i++) {
-				if (	ip_conn[i].state != SOCK_CLOSED &&
-						ip_conn[i].lport == TCPBUF->dstPort &&
-						ip_conn[i].rport == TCPBUF->srcPort &&
-						ip_conn[i].ripaddr == IPBUF->srcIPAddr) {
-					sock_num = i;
-					stack_state = STACK_ST_FOUND;
-					break;
-				}
-			}
-
-			// if we found an active connection
-			if (stack_state != STACK_ST_TCP) {
-				break;
-			}
-
-			// if we did not find any active connection and this is not a SYN request
-			// send out a RESET
-			if((TCPBUF->flags & TCP_CTL) != TCP_SYN) {
-				stack_state = STACK_ST_RESET;
-				break;
-			}
-
-			// Are there servers listening ?
-			for(i = 0; i < MAX_SOCK_NUM; i++) {
-				if (ip_conn[i].state == SOCK_LISTEN && ip_conn[i].lport == TCPBUF->dstPort) {
-					sock_num = i;
-					stack_state = STACK_ST_FOUND_LISTEN;
-					break;
-				}
-			}
-
-			// if no servers listening, drop packet and send a RESET
-			if (stack_state == STACK_ST_TCP) {
-				stack_state = STACK_ST_RESET;
-			}
-			break;
-		}
-		case STACK_ST_RESET:
-			// send reset packet
-			if(TCPBUF->flags & TCP_RST) {
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			TCPBUF->flags = TCP_RST | TCP_ACK;
-			TCPBUF->dataOffset = 5 << 4;
-
-			// swap SEQ number and ACK number
-			tmp32 = TCPBUF->seqNum;
-			TCPBUF->seqNum = TCPBUF->ackNum;
-			tmp32++;	// incrementing ACK number
-			TCPBUF->ackNum = HTOZGL(tmp32);
-
-			tmp16 = TCPBUF->srcPort;
-			TCPBUF->srcPort = TCPBUF->dstPort;
-			TCPBUF->dstPort = tmp16;
-
-			IPBUF->destIPAddr = IPBUF->srcIPAddr;
-			IPBUF->srcIPAddr = local_ip;
-
-			stack_pkt_len = 20+20;		// FIXME : replace with #defines
-
-			stack_state = STACK_ST_TCP_SEND_NO_CONN;
-			break;
-		case STACK_ST_TCP_SEND_ACK:
-			TCPBUF->flags = TCP_ACK;
-		case STACK_ST_TCP_SEND_NO_DATA:
-			stack_pkt_len = IP_TCP_HEADER_LEN;
-		case STACK_ST_TCP_SEND_NO_OPTS:
-			TCPBUF->dataOffset = (TCP_HEADER_LEN / 4) << 4;
-		case STACK_ST_TCP_SEND:
-			// Fill TCP + IP headers, calculate checksum and send
-			TCPBUF->ackNum = ip_conn[sock_num].rcv_nxt;
-
-			TCPBUF->seqNum = ip_conn[sock_num].snd_nxt;
-
-			IPBUF->protocol = 0x06;
-
-			TCPBUF->srcPort  = ip_conn[sock_num].lport;
-			TCPBUF->dstPort = ip_conn[sock_num].rport;
-
-			IPBUF->srcIPAddr = local_ip;
-			IPBUF->destIPAddr = ip_conn[sock_num].ripaddr;
-
-			TCPBUF->winSize = HTONS(TCP_MSS);
-		case STACK_ST_TCP_SEND_NO_CONN:
-			IPBUF->ttl = 64;
-			IPBUF->totalLen = HTONS(stack_pkt_len);
-			TCPBUF->urgPtr = 0;
-			TCPBUF->chksum = 0;
-			IPBUF->hdrChkSum = 0;
-
-			pseudoTCP.len = HSTOZGS(ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4));
-
-			// Calculate TCP checksum
-			TCPBUF->chksum = calc_chksum((U16*)TCPBUF, (ZGSTOHS(IPBUF->totalLen) - ((IPBUF->versionHdrLen & 0x0f)*4)), 1);
-		case STACK_ST_SEND_NO_LEN:
-			IPBUF->versionHdrLen = 0x45;
-			IPBUF->tos = 0;
-			IPBUF->flagsOffset = 0;
-			++ipid;
-			IPBUF->id = HTONS(ipid);
-
-			// Calculate IP checksum
-			IPBUF->hdrChkSum = calc_chksum((U16*)IPBUF, (IPBUF->versionHdrLen & 0x0f)*4, 0);
-		case STACK_ST_SEND:
-			// packet processing done
-			// flip src and dst MAC address
-			memcpy(&GBLBUF[0], &GBLBUF[6], 6);
-			memcpy(&GBLBUF[6], zg_get_mac(), 6);
-			stack_pkt_len += 14;
-			zg_set_buf(GBLBUF, stack_pkt_len);
-			zg_set_tx_status(1);
-
-			stack_state = STACK_ST_DONE;
-			break;
-		case STACK_ST_FOUND_LISTEN:
-			// Found listening servers
-			ip_conn[sock_num].rport = TCPBUF->srcPort;
-			ip_conn[sock_num].ripaddr = IPBUF->srcIPAddr;
-			ip_conn[sock_num].state = SOCK_SYNRECV;
-			iss++;
-			ip_conn[sock_num].snd_nxt = HTOZGL(iss);
-			ip_conn[sock_num].len = 1;
-
-			tmp32 = HTOZGL(TCPBUF->seqNum);
-			tmp32++;
-			ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-
-			TCPBUF->flags = TCP_ACK;
-		case STACK_ST_TCP_SEND_SYN:
-			TCPBUF->flags |= TCP_SYN;
-
-			// Send TCP MSS
-			TCPBUF->payload = TCP_OPT_MSS;
-			((U8*)&(TCPBUF->payload))[1] = TCP_OPT_MSS_LEN;
-			((U8*)&(TCPBUF->payload))[2] = (((U16)TCP_MSS)&0xff00)>>8;
-			((U8*)&(TCPBUF->payload))[3] = ((U16)TCP_MSS)&0x00ff;
-			TCPBUF->dataOffset = ((20 + TCP_OPT_MSS_LEN) / 4) << 4;
-
-			stack_pkt_len = 40 + 4;	// IP_TCP_HEADER_LEN + TCP_OPT_MSS_LEN
-
-			stack_state = STACK_ST_TCP_SEND;
-			break;
-		case STACK_ST_FOUND:
-			// process connection
-			if(TCPBUF->flags & TCP_RST) {
-				ip_conn[sock_num].state = SOCK_CLOSED;
-
-				// FIXME :	reset all other parameters.
-				//			go back to listening if configured as server
-
-				stack_state = STACK_ST_DROP;
-				break;
-			}
-
-			stack_app_data_len = ZGSTOHS(IPBUF->totalLen);
-			stack_app_data_len -= ((IPBUF->versionHdrLen & 0x0f)*4);
-			stack_app_data_len -= (((TCPBUF->dataOffset & 0xf0)>>4)*4);
-
-			/* Check if the incoming segment acknowledges any outstanding data.
-			 * If so, we update the sequence number, reset the length of the
-			 * outstanding data */
-			if((TCPBUF->flags & TCP_ACK) && ip_conn[sock_num].len) {
-				tmp32 = HTOZGL(ip_conn[sock_num].snd_nxt);
-				tmp32 = tmp32 + ip_conn[sock_num].len;
-
-				if (TCPBUF->ackNum == HTOZGL(tmp32)) {
-					// Update sequence number
-					ip_conn[sock_num].snd_nxt = HTOZGL(tmp32);
-
-					// Reset length of outstanding data
-					ip_conn[sock_num].len = 0;
-
-					ip_flags = FLAG_ACKED;
-				}
-
-			}
-
-			switch(ip_conn[sock_num].state) {
-			case SOCK_SYNRECV:
-				/* In SYN_RCVD we have sent out a SYNACK in response to a SYN,
-				 * and we are waiting for an ACK that acknowledges the data
-				 * we sent out the last time. */
-				//if(ip_conn[sock_num].len == 0) {
-				if(ip_flags & FLAG_ACKED) {
-					ip_conn[sock_num].state = SOCK_ESTABLISHED;
-					ip_conn[sock_num].len = 0;
-					if(stack_app_data_len > 0) {
-						ip_flags |= FLAG_DATA_AVAILABLE;
-
-						tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-						tmp32 = tmp32 + stack_app_data_len;
-						ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-
-						stack_state = STACK_ST_APP_SEND;
-						done = 1;
-					}
-					else {
-						stack_state = STACK_ST_DROP;
-					}
-
-					break;
-				}
-				else {
-					stack_state = STACK_ST_DROP;
-				}
-				break;
-			case SOCK_ESTABLISHED:
-				/* In the ESTABLISHED state, we call upon the application to feed
-			    data into the uip_buf. If the FLAG_ACKED flag is set, the
-			    application should put new data into the buffer, otherwise we are
-			    retransmitting an old segment, and the application should put that
-			    data into the buffer.
-
-			    If the incoming packet is a FIN, we should close the connection on
-			    this side as well, and we send out a FIN and enter the LAST_ACK
-			    state. We require that there is no outstanding data; otherwise the
-			    sequence numbers will be screwed up. */
-
-				if(TCPBUF->flags & TCP_FIN) {
-					if(ip_conn[sock_num].len) {
-						stack_state = STACK_ST_DROP;
-						break;
-					}
-
-					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-					tmp32 = tmp32 + 1 + stack_app_data_len;
-					ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-
-					ip_flags |= FLAG_REMOTE_CLOSE;
-
-					ip_conn[sock_num].len = 1;
-					ip_conn[sock_num].state = SOCK_LAST_ACK;
-
-					TCPBUF->flags = TCP_FIN | TCP_ACK;
-
-					stack_state = STACK_ST_TCP_SEND_NO_DATA;
-					break;
-				}
-
-				/* If stack_app_data_len > 0 we have TCP data in the packet,
-				 * and we flag this by setting the FLAG_DATA_AVAILABLE flag and
-				 * update the sequence number we acknowledge. */
-				if(stack_app_data_len > 0) {
-					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-					if (HTOZGL(TCPBUF->seqNum) < tmp32) {
-						// send ACK
-						stack_pkt_len = IP_TCP_HEADER_LEN;
-						TCPBUF->flags = TCP_ACK;
-						stack_state = STACK_ST_TCP_SEND_NO_OPTS;
-						break;
-					}
-					else {
-						ip_flags |= FLAG_DATA_AVAILABLE;
-						//tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-						tmp32 = tmp32 + stack_app_data_len;
-						ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-					}
-				}
-
-				//if(ip_flags & (FLAG_DATA_AVAILABLE | FLAG_ACKED)) {
-				if(ip_flags & FLAG_DATA_AVAILABLE) {
-					stack_state = STACK_ST_APP_SEND;
-					done = 1;
-					break;
-				}
-
-				stack_state = STACK_ST_DROP;
-				break;
-			case SOCK_LAST_ACK:
-				/* We can close this connection if the peer has acknowledged
-				 * our FIN. This is indicated by the FLAG_ACKED flag. */
-				if(ip_flags & FLAG_ACKED) {
-					ip_conn[sock_num].state = SOCK_LISTEN;
-					ip_conn[sock_num].len = 0;
-					ip_conn[sock_num].mss = 0;
-					ip_conn[sock_num].rcv_nxt = 0;
-					ip_conn[sock_num].ripaddr = 0;
-					ip_conn[sock_num].rport = 0;
-					ip_conn[sock_num].snd_nxt = 0;
-				}
-				break;
-			case SOCK_FIN_WAIT_1:
-#if 0
-				if(stack_app_data_len > 0) {
-					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-					tmp32 = tmp32 + stack_pkt_len;
-					ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-				}
+#ifdef APP_WEBSERVER
+	webserver_init();
 #endif
-				if(stack_app_data_len > 0) {
-					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-					if (HTOZGL(TCPBUF->seqNum) < tmp32) {
-						// send ACK
-						stack_pkt_len = IP_TCP_HEADER_LEN;
-						TCPBUF->flags = TCP_ACK;
-						stack_state = STACK_ST_TCP_SEND_NO_OPTS;
-						break;
-					}
-					else {
-						//ip_flags |= FLAG_DATA_AVAILABLE;
-						//tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-						tmp32 = tmp32 + stack_app_data_len;
-						ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-					}
-				}
 
-				if(TCPBUF->flags & TCP_FIN) {
-					tmp32 = HTOZGL(ip_conn[sock_num].rcv_nxt);
-					tmp32 = tmp32 + 1;
-					ip_conn[sock_num].rcv_nxt = HTOZGL(tmp32);
-
-					ip_conn[sock_num].state = SOCK_LISTEN;
-
-					stack_state = STACK_ST_TCP_SEND_ACK;
-					break;
-				}
-			default:
-				break;
-			}
-
-			if (stack_state == STACK_ST_FOUND) {
-				stack_state = STACK_ST_DROP;
-			}
-			break;
-		case STACK_ST_APP_SEND:
-			// Application has data to be sent
-			if(stack_app_data_len > 0) {
-				if(ip_conn[sock_num].len == 0) {
-			    	/* Remember how much data we send out now so that we
-			     	 * know when everything has been acknowledged. */
-			        ip_conn[sock_num].len = stack_app_data_len;
-			        stack_app_data_len = 0;
-			        stack_pkt_len = ip_conn[sock_num].len + IP_TCP_HEADER_LEN;
-			        //TCPBUF->flags = TCP_ACK | TCP_PSH | TCP_FIN;
-			        TCPBUF->flags = TCP_ACK | TCP_PSH;
-
-			        //ip_conn[sock_num].state = SOCK_FIN_WAIT_1;
-
-			        stack_state = STACK_ST_TCP_SEND_NO_OPTS;
-			        //break;
-			     }
-			}
-			else {
-				/* If the app has no data to send, just send out a pure ACK
-				 * if there was new data. */
-				if(ip_flags & FLAG_DATA_AVAILABLE) {
-					stack_pkt_len = IP_TCP_HEADER_LEN;
-					TCPBUF->flags = TCP_ACK;
-					stack_state = STACK_ST_TCP_SEND_NO_OPTS;
-					//break;
-				}
-#if 0
-				if(app_flags & APP_FLAG_CLOSE) {
-					ip_conn[sock_num].len = 1;
-					ip_conn[sock_num].state = SOCK_FIN_WAIT_1;
-					//TCPBUF->flags = TCP_FIN | TCP_ACK;
-					TCPBUF->flags |= TCP_FIN;
-					stack_state = STACK_ST_TCP_SEND_NO_DATA;
-					break;
-				}
+#ifdef APP_WEBCLIENT
+	webclient_init();
 #endif
+
+	uip_ipaddr(ipaddr, local_ip[0], local_ip[1], local_ip[2], local_ip[3]);
+	uip_sethostaddr(ipaddr);
+	uip_ipaddr(ipaddr, gateway_ip[0],gateway_ip[1],gateway_ip[2],gateway_ip[3]);
+	uip_setdraddr(ipaddr);
+	uip_ipaddr(ipaddr, subnet_mask[0],subnet_mask[1],subnet_mask[2],subnet_mask[3]);
+	uip_setnetmask(ipaddr);
+}
+
+void stack_process(void)
+{
+	int i;
+
+		uip_len = network_read();
+
+		if(uip_len > 0) {
+			if(BUF->type == htons(UIP_ETHTYPE_IP)){
+				uip_arp_ipin();
+				uip_input();
+				if(uip_len > 0) {
+					uip_arp_out();
+					network_send();
+				}
+			}else if(BUF->type == htons(UIP_ETHTYPE_ARP)){
+				uip_arp_arpin();
+				if(uip_len > 0){
+					network_send();
+				}
 			}
 
-			if(app_flags & APP_FLAG_CLOSE) {
-				ip_conn[sock_num].len++;
-				ip_conn[sock_num].state = SOCK_FIN_WAIT_1;
-				//TCPBUF->flags = TCP_FIN | TCP_ACK;
-				TCPBUF->flags |= TCP_FIN;
-				//stack_state = STACK_ST_TCP_SEND_NO_DATA;
-				break;
+		}else if(timer_expired(&periodic_timer)) {
+			timer_reset(&periodic_timer);
+
+			for(i = 0; i < UIP_CONNS; i++) {
+				uip_periodic(i);
+				if(uip_len > 0) {
+					uip_arp_out();
+					network_send();
+				}
 			}
 
-			if (stack_state == STACK_ST_APP_SEND)
-				stack_state = STACK_ST_DROP;
-			break;
-		case STACK_ST_DROP:
-			// drop IP packet
-		case STACK_ST_DONE:
-		default:
-			stack_state = STACK_ST_IDLE;
-			zg_clear_rx_status();
-			done = 1;
-			break;
+			// if nothing to TX and the self ARP timer expired
+			// TX a broadcast ARP reply. This was implemented to
+			// cause periodic TX to prevent the AP from disconnecting
+			// us from the network
+			if (uip_len == 0 && timer_expired(&self_arp_timer)) {
+				timer_reset(&self_arp_timer);
+				uip_self_arp_out();
+				network_send();
+			}
+
+			if(timer_expired(&arp_timer)) {
+				timer_reset(&arp_timer);
+				uip_arp_timer();
+			}
 		}
-	} while (!done);
+	return;
+}
+
+void uip_log(char *m)
+{
+	//TODO: Get debug information out here somehow, does anybody know a smart way to do that?
 }

@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		apps-conf.h
+  Description:	Web application configuration file
 
  ******************************************************************************
 
@@ -28,39 +28,23 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial port
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
-}
+#ifndef __APPS_CONF_H__
+#define __APPS_CONF_H__
 
-#include "WProgram.h"
-#include "WiShield.h"
+//Here we include the header file for the application(s) we use in our project.
+#define APP_WEBSERVER
+//#define APP_WEBCLIENT
 
-void WiShield::init()
-{
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+#ifdef APP_WEBSERVER
+#include "webserver.h"
+#endif
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
-	}
+#ifdef APP_WEBCLIENT
+#include "webclient.h"
+#endif
 
-	stack_init();
-}
-
-void WiShield::run()
-{
-	stack_process();
-	zg_drv_process();
-}
-
-WiShield WiFi;
+#endif /*__APPS_CONF_H__*/

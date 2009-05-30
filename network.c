@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		network.c
+  Description:	Network interface for the WiShield 1.0
 
  ******************************************************************************
 
@@ -28,39 +28,44 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial version
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
+#include "global-conf.h"
+#include <avr/io.h>
+#include <util/delay.h>
+#include <string.h>
+#include "types.h"
+#include "g2100.h"
+
+void network_init(void)
+{
 }
 
-#include "WProgram.h"
-#include "WiShield.h"
-
-void WiShield::init()
+unsigned int network_read(void)
 {
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+	return zg_get_rx_status();
+}
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
+void network_send(void)
+{
+	if (uip_len > 0) {
+		if(uip_len <= UIP_LLH_LEN + 40){
+			zg_set_buf(uip_buf, uip_len);
+		}
+		else{
+			memcpy((u8*)&uip_buf[54], (u8*)uip_appdata, (uip_len-54));
+			zg_set_buf(uip_buf, uip_len);
+		}
+		zg_set_tx_status(1);
 	}
-
-	stack_init();
 }
 
-void WiShield::run()
+void network_get_MAC(u8* macaddr)
 {
-	stack_process();
-	zg_drv_process();
 }
 
-WiShield WiFi;
+void network_set_MAC(u8* macaddr)
+{
+}

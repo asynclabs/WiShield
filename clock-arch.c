@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		WiShield.cpp
-  Description:	WiShield library file for the WiShield 1.0
+  Filename:		clock-arch.c
+  Description:	Timer routine file
 
  ******************************************************************************
 
@@ -28,39 +28,59 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/01/2009	Initial version
-   AsyncLabs			05/29/2009	Adding support for new library
+   AsyncLabs			05/29/2009	Initial port
 
  *****************************************************************************/
 
-extern "C" {
-  #include "types.h"
-  #include "global-conf.h"
-  #include "network.h"
-  #include "g2100.h"
-  void stack_init(void);
-  void stack_process(void);
-}
+#include "global-conf.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <avr/interrupt.h>
+#include <avr/io.h>
+#include <avr/sfr_defs.h>
 
-#include "WProgram.h"
-#include "WiShield.h"
+#include "clock-arch.h"
+#include "wiring.h"
 
-void WiShield::init()
+#if 0
+//Counted time
+clock_time_t clock_datetime = 0;
+
+//Overflow interrupt
+ISR(TIMER0_OVF_vect)
 {
-	zg_init();
-	attachInterrupt(0, zg_isr, LOW);
+	clock_datetime += 1;
+	TIFR0 |= (1<<TOV0);
+}
+*/
 
-	while(zg_get_conn_state() != 1) {
-		zg_drv_process();
-	}
+//Initialise the clock
+void clock_init(){
+	//Activate overflow interrupt for timer0
+	TIMSK0 |= (1<<TOIE0);
 
-	stack_init();
+	//Use prescaler 1024
+	TCCR0B |= ((1<<CS12)|(1<<CS10));
+
+	//Activate interrupts
+	sei();
 }
 
-void WiShield::run()
+//Return time
+clock_time_t clock_time(){
+	clock_time_t time;
+
+	cli();
+	time = clock_datetime;
+	sei();
+
+	return time;
+}
+#endif
+
+//Return time
+clock_time_t clock_time()
 {
-	stack_process();
-	zg_drv_process();
+	return millis();
 }
-
-WiShield WiFi;
