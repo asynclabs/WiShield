@@ -336,7 +336,8 @@
  * This is should not be to set to more than
  * UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN.
  */
-#define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN)
+#define ZG_RX_HDR_LEN	17	// ZeroG G2100 RX Indicate header length
+#define UIP_TCP_MSS     (UIP_BUFSIZE - UIP_LLH_LEN - UIP_TCPIP_HLEN - ZG_RX_HDR_LEN)
 
 /**
  * The size of the advertised receiver's window.
