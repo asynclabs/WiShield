@@ -81,6 +81,10 @@ void stack_init(void)
 	webclient_init();
 #endif
 
+#ifdef APP_SOCKAPP
+	socket_app_init();
+#endif
+
 	uip_ipaddr(ipaddr, local_ip[0], local_ip[1], local_ip[2], local_ip[3]);
 	uip_sethostaddr(ipaddr);
 	uip_ipaddr(ipaddr, gateway_ip[0],gateway_ip[1],gateway_ip[2],gateway_ip[3]);

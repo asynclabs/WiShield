@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		apps-conf.h
-  Description:	Web application configuration file
+  Filename:		socketapp.h
+  Description:	Simple socket programming example for the WiShield 1.0
 
  ******************************************************************************
 
@@ -28,28 +28,35 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/29/2009	Initial port
+   AsyncLabs			06/06/2009	Initial version
 
  *****************************************************************************/
 
-#ifndef __APPS_CONF_H__
-#define __APPS_CONF_H__
+#ifndef __SOCKET_APP_H__
+#define __SOCKET_APP_H__
 
-//Here we include the header file for the application(s) we use in our project.
-#define APP_WEBSERVER
-//#define APP_WEBCLIENT
-//#define APP_SOCKAPP
+/* Since this file will be included by uip.h, we cannot include uip.h
+   here. But we might need to include uipopt.h if we need the u8_t and
+   u16_t datatypes. */
+#include "uipopt.h"
+#include "psock.h"
 
-#ifdef APP_WEBSERVER
-#include "webserver.h"
-#endif
+/* Next, we define the uip_tcp_appstate_t datatype. This is the state
+   of our application, and the memory required for this state is
+   allocated together with each TCP connection. One application state
+   for each TCP connection. */
+typedef struct socket_app_state {
+  struct psock p;
+  char inputbuffer[20];
+  char name[20];
+} uip_tcp_appstate_t;
 
-#ifdef APP_WEBCLIENT
-#include "webclient.h"
-#endif
+/* Finally we define the application function to be called by uIP. */
+void socket_app_appcall(void);
+#ifndef UIP_APPCALL
+#define UIP_APPCALL socket_app_appcall
+#endif /* UIP_APPCALL */
 
-#ifdef APP_SOCKAPP
-#include "socketapp.h"
-#endif
+void socket_app_init(void);
 
-#endif /*__APPS_CONF_H__*/
+#endif /* __SOCKET_APP_H__ */
