@@ -67,4 +67,6 @@ typedef unsigned int U16;
 typedef unsigned long u32;
 typedef unsigned long U32;
 
+typedef uint8_t boolean;
+
 #endif /* TYPES_H_ */
