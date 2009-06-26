@@ -437,8 +437,7 @@ void server_task_impl() {
 GETrequest* queue = NULL;
 
 void Server::submitRequest(GETrequest *req) {
-	Serial.println("submit");
-    // Check for an empty queue
+	 // Check for an empty queue
 	if (queue == NULL) {
 		// Point to the new request
 		queue = req;
@@ -656,12 +655,10 @@ void Server::server_task() {
 #ifdef ENABLE_CLIENT_MODE
 	// Check if there is a pending client request
 	if (queue) {
-		Serial.println("attempt connect");
 		// Attempt to connect to the server
 		struct uip_conn *conn = uip_connect(&(queue->ipAddr), queue->port);
 		
 		if (conn != NULL) {
-			Serial.println("ok");
 #ifdef DEBUG
 			Serial.print("Got connection for ");
 			Serial.println(queue->hostName);
