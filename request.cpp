@@ -65,6 +65,10 @@ void GETrequest::setAuth(char* auth) {
 	if (!this->active) this->auth = auth;
 }
 
+void GETrequest::setURL(char* URL) {
+	if (!this->active) this->URL = URL;
+}
+
 void GETrequest::submit() {	
 	// Ignore submit request if already active
 	if (!this->active) WiServer.submitRequest(this);
@@ -73,6 +77,8 @@ void GETrequest::submit() {
 boolean GETrequest::isActive() {	
 	return this->active;
 }
+
+
 
 
 POSTrequest::POSTrequest(uint8* ipAddr, int port, char* hostName, char* URL, bodyFunction body) : 
