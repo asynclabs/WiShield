@@ -30,7 +30,7 @@
 								    plus added various enhancements such as
 								    multi-pass transmission, local client
 								    checks, activity LED support, etc.
- 
+
    Mark A. Patel		06/22/2009	Revised client API
 
 
@@ -40,7 +40,7 @@
 #define WISERVER_H_
 
 extern "C" {
-	#include "types.h"
+	#include "witypes.h"
 	#include "server.h"
 	#include "config.h"
 	#include "uip.h"
@@ -72,45 +72,45 @@ typedef void (*bodyFunction)();
 /*
  * Class that encapsulates an HTTP GET request
  */
-class GETrequest 
+class GETrequest
 	{
 	public:
-		
+
 		/*
 		 * Creates a new GETrequest with the provided IP, port, host name and URL
 		 */
 		GETrequest(uint8* ipAddr, int port, char* hostName, char* URL);
-		
+
 		/*
-		 * Submits the request and prevents further changes to the request until it has been 
+		 * Submits the request and prevents further changes to the request until it has been
 		 * processed.
 		 */
 		void submit();
-		
+
 		/*
 		 * Sets the function that should be called with data returned by the server.
 		 */
 		void setReturnFunc(returnFunction func);
-		
+
 		/*
 		 * Sets the authorization string for the request.  Calls to this method will be ignored if the request
 		 * has been submitted and is still being processed by WiServer.
 		 */
 		void setAuth(char* auth);
-		
+
 		/*
 		 * Checks if this request is currently being processed by the WiServer (i.e. it is awaiting a connection
-		 * or is currently connected and communicating with the server).  If it is, any calls that attempt 
+		 * or is currently connected and communicating with the server).  If it is, any calls that attempt
 		 * to change the properties of the request will be ignored.
 		 */
 		boolean isActive();
-		
+
 		/*
 		 * Sets the URL for the request.  Calls to this method will be ignored if the request
 		 * has been submitted and is currently being processed by WiServer.
 		 */
-		void setURL(char* URL);		
-		
+		void setURL(char* URL);
+
 	    // Server IP address (network byte order)
 		uip_ipaddr_t ipAddr;
 		// Server port number
@@ -122,7 +122,7 @@ class GETrequest
 		// Authorization string (may be NULL)
 	    char* auth;
 	    // Return value callback function (may be NULL)
-		returnFunction returnFunc;	
+		returnFunction returnFunc;
 	    // Indicates if the request is currently active (i.e. has a connection)
 		boolean active;
 	    // Body data callback function (may be NULL)
@@ -140,14 +140,14 @@ class GETrequest
 class POSTrequest : public GETrequest
 	{
 	public:
-		
+
 		/*
 		 * Creates a new POSTrequest with the provided IP, port, host name, URL and body function.
 		 */
 		POSTrequest(uint8* ipAddr, int port, char* hostName, char* URL, bodyFunction body);
-		
+
 		void setBodyFunc(bodyFunction body);
-		
+
 	};
 
 
@@ -157,13 +157,13 @@ class POSTrequest : public GETrequest
 class TWEETrequest : public POSTrequest
 	{
 	public:
-		
+
 		/*
 		 * Creates a new TWEETrequest with the provided auth string and message function.
 		 * The body function will be called to provide the contents of the message; the
 		 * 'status=' prefix is automatically inserted before the message.
 		 */
-		TWEETrequest(char* auth, bodyFunction message);		
+		TWEETrequest(char* auth, bodyFunction message);
 	};
 
 #endif // ENABLE_CLIENT_MODE
@@ -178,15 +178,15 @@ class Server: public Print
 		 *
 		 * @param pageServerFunc name of the sketch's page serving function
 		 */
-		void init(pageServingFunction function);	
-	    
+		void init(pageServingFunction function);
+
 	    /*
 		 * Enables or disables verbose mode.  If verbose mode is true, then WiServer
 		 * will output log info via the Serial class.  Verbose mode is disabled by
 		 * default, but is automatically enabled if DEBUG is defined
 		 */
 		void enableVerboseMode(boolean enable);
-		
+
 		/**
 		 * The server task method (must be called in the main loop to run the WiServer)
 		 */
@@ -214,10 +214,10 @@ class Server: public Print
 
 		/**
 		 * Prints a time value in the form HH:MM:SS.  The time value is in milliseconds.
-		 * 
+		 *
 		 */
 		void printTime(long t);
-	
+
 		/**
 		 * Indicates if a page is currently being sent, and that a subsequent call to the page
 		 * serving function may occur to request more data or to retransmit data that was lost

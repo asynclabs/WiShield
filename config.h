@@ -36,7 +36,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#include "types.h"
+#include "witypes.h"
 
 extern U8 local_ip[];
 extern U8 gateway_ip[];

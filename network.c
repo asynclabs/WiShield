@@ -36,7 +36,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <string.h>
-#include "types.h"
+#include "witypes.h"
 #include "g2100.h"
 
 void network_init(void)

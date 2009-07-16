@@ -42,11 +42,12 @@ extern "C" {
     #include "g2100.h"
 	#include "uip.h"
     #include "server.h"
+	#include "global-conf.h"
 	void stack_init(void);
 	void stack_process(void);
 }
 
-
+#ifdef APP_WISERVER
 
 #define CR 13
 #define LF 10
@@ -218,7 +219,7 @@ void send() {
 		Serial.print(len);
 		Serial.println(" bytes");
 	}
-	
+
 #ifdef DEBUG
 	Serial.print(app->ackedCount);
 	Serial.print(" - ");
@@ -239,12 +240,12 @@ void send() {
 
 /*
  * Processes a line of data in an HTTP request.  This function looks
- * for GET and saves a copy of the URL in the current connection's 
- * server request.  It also sets the request's isValid flag if the 
+ * for GET and saves a copy of the URL in the current connection's
+ * server request.  It also sets the request's isValid flag if the
  * URL has been saved and an empty line is found.
  */
 boolean processLine(char* data, int len) {
-	
+
 	// Check for a valid GET line
 	if ((uip_conn->appstate.request == NULL) && (strncmp(data, "GET /", 4) == 0)) {
 		// URL starts at the '/'
@@ -266,7 +267,7 @@ boolean processLine(char* data, int len) {
 		}
 		// No space, not valid
 	}
-	
+
 	return (len == 0);
 }
 
@@ -274,25 +275,25 @@ boolean processLine(char* data, int len) {
 /*
  * Processes a packet of data that supposedly contains an HTTP request
  * This function looks for CR/LF (or just LF) and calls processLine
- * with each line of data found. 
+ * with each line of data found.
  */
 boolean processPacket(char* data, int len) {
-	
+
 	// Address after the last byte of data
 	char* end = data + len;
 	// Start of current line
 	char* start = data;
-	
+
 	// Scan through the bytes in the packet looking for a Line Feed character
 	while (data < end) {
 		if (*data == LF) {
 			// Determine the length of the line excluding the Line Feed
 			int lineLength = data - start;
-			
+
 			if (*(data - 1) == CR) {
 				lineLength--;
 			}
-			
+
 			*(start + lineLength) = 0;
 			// Process the line
 			if (processLine(start, lineLength)) {
@@ -362,40 +363,40 @@ boolean Server::clientIsLocal() {
  * Handles high-level server communications
  */
 void server_task_impl() {
-	
+
 	// Get the connection's app state
 	uip_tcp_appstate_t *app = &(uip_conn->appstate);
-	
+
 	if (uip_connected()) {
-		
+
 		if (verbose) {
-			Serial.println("Server connected");		
+			Serial.println("Server connected");
 		}
-		
+
 		// Initialize the server request data
 		app->ackedCount = 0;
 		app->request = NULL;
 	}
-	
+
 	if (uip_newdata()) {
  		setRXPin(HIGH);
 		// Process the received packet and check if a valid GET request had been received
 		if (processPacket((char*)uip_appdata, uip_datalen()) && app->request) {
 			if (verbose) {
-				Serial.print("Processing request for ");		
+				Serial.print("Processing request for ");
 				Serial.println((char*)app->request);
 			}
 			sendPage();
 		}
 	}
-	
-	
+
+
 	// Did we get an ack for the last packet?
 	if (uip_acked()) {
 		// Record the bytes that were successfully sent
 		app->ackedCount += app->sentCount;
 		app->sentCount = 0;
-		
+
 		// Check if we're done or need to send more content for this
 		// request
 		if (app->ackedCount == (int)app->cursor) {
@@ -406,21 +407,21 @@ void server_task_impl() {
 			sendPage();
 		}
 	}
-	
+
 	// Check if we need to retransmit
 	if (uip_rexmit()) {
 		// Send the same data again (same ackedCount value)
 		sendPage();
 	}
-	
+
 	if (uip_aborted() || uip_closed() || uip_timedout()) {
 
 		// Check if a URL was stored for this connection
 		if (app->request != NULL) {
 			if (verbose) {
-				Serial.println("Server connection closed");		
+				Serial.println("Server connection closed");
 			}
-			
+
 			// Free RAM and clear the pointer
 			free(app->request);
 			app->request = NULL;
@@ -467,7 +468,7 @@ void sendRequest() {
 	app->cursor = 0;
 
 	// Indicates if this is a POST request (instead of a GET)
-	// Main difference is that POST requests have a body and a 
+	// Main difference is that POST requests have a body and a
 	// callback function to generate said body
 	bool isPost = req->body != NULL;
 
@@ -488,11 +489,11 @@ void sendRequest() {
 
 	// User agent (WiServer, of course!)
 	WiServer.println_P(userAgent);
-	
+
 	if (isPost) {
 		// Since a post has a body after the blank header line, it has to include
 		// an accurate content length so that the server knows when it has received
-		// all of the body data. 
+		// all of the body data.
 		char* lengthFieldPos; // Cursor position where the content length place holder starts
 		char* contentStart; // Start of the body
 		char* contentEnd; // End of the body
@@ -510,12 +511,12 @@ void sendRequest() {
 
 		// Body starts here
 		contentStart = app->cursor;
-		
+
 		// Print the body preamble if the request has one
 		if (req->bodyPreamble) {
 			WiServer.print(req->bodyPreamble);
 		}
-		
+
 		// Have the sketch provide the body for the POST
 		req->body();
 
@@ -528,7 +529,7 @@ void sendRequest() {
 
 		// Put the cursor back at the end of the body so that all of the data gets sent
 		app->cursor = contentEnd;
-	
+
 	} else {
 		// Blank line to indicate end of GET header
 		WiServer.println();
@@ -561,7 +562,7 @@ void client_task_impl() {
 		// Record the bytes that were successfully sent
 		app->ackedCount += app->sentCount;
 		app->sentCount = 0;
-		
+
 		// Check if we're done or need to send more content for this
 		// request
 		if (app->ackedCount != (int)app->cursor) {
@@ -569,7 +570,7 @@ void client_task_impl() {
 			sendRequest();
 		}
 	}
-	
+
 	if (uip_rexmit()) {
 		sendRequest();
 	}
@@ -597,12 +598,12 @@ void client_task_impl() {
 				Serial.print("Ended connection with ");
 				Serial.println(req->hostName);
 			}
-			
+
 			if (req->returnFunc) {
 				// Call the sketch's callback function with 0 bytes to indicate End Of Data
 				req->returnFunc((char*)uip_appdata, 0);
 			}
-			// Remove the request from the connection 
+			// Remove the request from the connection
 			app->request = NULL;
 			// Request is no longer active
 			req->active = false;
@@ -648,7 +649,7 @@ void Server::server_task() {
 
 	// Run the stack state machine
 	stack_process();
-	
+
 	// Run the driver
 	zg_drv_process();
 
@@ -657,13 +658,13 @@ void Server::server_task() {
 	if (queue) {
 		// Attempt to connect to the server
 		struct uip_conn *conn = uip_connect(&(queue->ipAddr), queue->port);
-		
+
 		if (conn != NULL) {
 #ifdef DEBUG
 			Serial.print("Got connection for ");
 			Serial.println(queue->hostName);
 #endif // DEBUG
-			
+
 			// Attach the request object to its connection
 			conn->appstate.request = queue;
 			// Move the head of the queue to the next request in the queue
@@ -677,3 +678,5 @@ void Server::server_task() {
 
 // Single instance of the server
 Server WiServer;
+
+#endif	/* APP_WISERVER */

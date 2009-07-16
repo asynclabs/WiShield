@@ -1,7 +1,7 @@
 
 /******************************************************************************
 
-  Filename:		types.h
+  Filename:		witypes.h
   Description:	Data types
 
  ******************************************************************************
@@ -33,8 +33,8 @@
 
  *****************************************************************************/
 
-#ifndef TYPES_H_
-#define TYPES_H_
+#ifndef WITYPES_H_
+#define WITYPES_H_
 
 #include <avr/pgmspace.h>
 
@@ -69,4 +69,4 @@ typedef unsigned long U32;
 
 typedef uint8_t boolean;
 
-#endif /* TYPES_H_ */
+#endif /* WITYPES_H_ */

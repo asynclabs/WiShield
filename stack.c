@@ -40,7 +40,7 @@
 #include "global-conf.h"
 #include "uip_arp.h"
 #include "network.h"
-#include "types.h"
+#include "witypes.h"
 #include "config.h"
 #include "g2100.h"
 #include "spi.h"

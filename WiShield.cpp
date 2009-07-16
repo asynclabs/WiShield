@@ -34,7 +34,7 @@
  *****************************************************************************/
 
 extern "C" {
-  #include "types.h"
+  #include "witypes.h"
   #include "global-conf.h"
   #include "network.h"
   #include "g2100.h"
