@@ -1,8 +1,8 @@
 
 /******************************************************************************
 
-  Filename:		apps-conf.h
-  Description:	Web application configuration file
+  Filename:		udpapp.h
+  Description:	UDP app for the WiShield 1.0
 
  ******************************************************************************
 
@@ -28,38 +28,35 @@
 
    Author               Date        Comment
   ---------------------------------------------------------------
-   AsyncLabs			05/29/2009	Initial port
+   AsyncLabs			07/11/2009	Initial version
 
  *****************************************************************************/
 
-#ifndef __APPS_CONF_H__
-#define __APPS_CONF_H__
+#ifndef __UDPAPP_H__
+#define __UDPAPP_H__
 
-//Here we include the header file for the application(s) we use in our project.
-#define APP_WEBSERVER
-//#define APP_WEBCLIENT
-//#define APP_SOCKAPP
-//#define APP_UDPAPP
-//#define APP_WISERVER
+#include "pt.h"
 
-#ifdef APP_WEBSERVER
-#include "webserver.h"
-#endif
+typedef struct socket_app_state {
+  char name;
+} uip_tcp_appstate_t;
 
-#ifdef APP_WEBCLIENT
-#include "webclient.h"
-#endif
+void dummy_app_appcall(void);
+#ifndef UIP_APPCALL
+#define UIP_APPCALL dummy_app_appcall
+#endif /* UIP_APPCALL */
 
-#ifdef APP_SOCKAPP
-#include "socketapp.h"
-#endif
+typedef struct udpapp_state {
+	struct pt pt;
+	char state;
+	char inputbuf[10];
+} uip_udp_appstate_t;
 
-#ifdef APP_UDPAPP
-#include "udpapp.h"
-#endif
+void udpapp_appcall(void);
+#ifndef UIP_UDP_APPCALL
+#define UIP_UDP_APPCALL udpapp_appcall
+#endif /* UIP_UDP_APPCALL */
 
-#ifdef APP_WISERVER
-#include "server.h"
-#endif
+void udpapp_init(void);
 
-#endif /*__APPS_CONF_H__*/
+#endif /* __UDPAPP_H__ */
