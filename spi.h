@@ -39,8 +39,8 @@
 // Uncomment one line below to
 // specify which Arduino pin
 // to use as WiShield interrupt
-//#define USE_DIG0_INTR		// use digital pin 0
-#define USE_DIG8_INTR		// use digital pin 8
+#define USE_DIG0_INTR		// use digital pin 0
+//#define USE_DIG8_INTR		// use digital pin 8
 
 
 #ifdef USE_DIG0_INTR
