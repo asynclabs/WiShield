@@ -40,6 +40,7 @@
 
 extern "C" {
     #include "g2100.h"
+	#include "spi.h"
 	#include "uip.h"
     #include "server.h"
 	#include "global-conf.h"
@@ -83,7 +84,18 @@ void Server::init(pageServingFunction function) {
 
 	// WiShield init
 	zg_init();
+
+#ifdef USE_DIG0_INTR
 	attachInterrupt(0, zg_isr, LOW);
+#endif
+
+#ifdef USE_DIG8_INTR
+	// set digital pin 8 on Arduino
+	// as ZG interrupt pin
+	PCICR |= (1<<PCIE0);
+	PCMSK0 |= (1<<PCINT0);
+#endif
+
 	while(zg_get_conn_state() != 1) {
 		zg_drv_process();
 	}
@@ -105,6 +117,14 @@ void Server::init(pageServingFunction function) {
 	Serial.println("WiServer init called");
 #endif // DEBUG
 }
+
+#ifdef USE_DIG8_INTR
+// PCINT0 interrupt vector
+ISR(PCINT0_vect)
+{
+	zg_isr();
+}
+#endif
 
 void Server::setIndicatorPins(int tx, int rx) {
 	// Store the pin numbers

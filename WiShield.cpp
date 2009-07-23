@@ -38,6 +38,7 @@ extern "C" {
   #include "global-conf.h"
   #include "network.h"
   #include "g2100.h"
+  #include "spi.h"
   void stack_init(void);
   void stack_process(void);
 }
@@ -48,7 +49,17 @@ extern "C" {
 void WiShield::init()
 {
 	zg_init();
+
+#ifdef USE_DIG0_INTR
 	attachInterrupt(0, zg_isr, LOW);
+#endif
+
+#ifdef USE_DIG8_INTR
+	// set digital pin 8 on Arduino
+	// as ZG interrupt pin
+	PCICR |= (1<<PCIE0);
+	PCMSK0 |= (1<<PCINT0);
+#endif
 
 	while(zg_get_conn_state() != 1) {
 		zg_drv_process();
@@ -62,5 +73,13 @@ void WiShield::run()
 	stack_process();
 	zg_drv_process();
 }
+
+#if defined USE_DIG8_INTR && !defined APP_WISERVER
+// PCINT0 interrupt vector
+ISR(PCINT0_vect)
+{
+	zg_isr();
+}
+#endif
 
 WiShield WiFi;

@@ -36,10 +36,26 @@
 #ifndef SPI_H_
 #define SPI_H_
 
+// Uncomment one line below to
+// specify which Arduino pin
+// to use as WiShield interrupt
+//#define USE_DIG0_INTR		// use digital pin 0
+#define USE_DIG8_INTR		// use digital pin 8
+
+
+#ifdef USE_DIG0_INTR
 #define ZG2100_ISR_DISABLE()	(EIMSK &= ~(0x01))
 #define ZG2100_ISR_ENABLE()		(EIMSK |= 0x01)
 #define ZG2100_ISR_GET(X)		(X = EIMSK)
 #define ZG2100_ISR_SET(X)		(EIMSK = X)
+#endif
+
+#ifdef USE_DIG8_INTR
+#define ZG2100_ISR_DISABLE()	(PCMSK0 &= ~(0x01))
+#define ZG2100_ISR_ENABLE()		(PCMSK0 |= 0x01)
+#define ZG2100_ISR_GET(X)		(X = PCMSK0)
+#define ZG2100_ISR_SET(X)		(PCMSK0 = X)
+#endif
 
 //AVR Mega168 SPI HAL
 #define BIT0							0x01
@@ -50,6 +66,10 @@
 #define BIT5							0x20
 #define BIT6							0x40
 #define BIT7							0x80
+
+#ifdef USE_DIG8_INTR
+#define ZG2100_INTR						BIT0
+#endif
 
 #define SPI0_SS_BIT						BIT2
 #define SPI0_SS_DDR						DDRB
@@ -78,11 +98,19 @@
 #define SPI0_RecvBute()					SPI0_RxData()
 
 // PB4(MISO), PB3(MOSI), PB5(SCK), PB2(/SS)         // CS=1, waiting for SPI start // SPI mode 0, 8MHz
+#ifdef USE_DIG8_INTR
+#define SPI0_Init()						DDRB  |= SPI0_SS_BIT|SPI0_SCLK_BIT|SPI0_MOSI_BIT|LEDConn_BIT;\
+										DDRB  &= ~(SPI0_MISO_BIT|ZG2100_INTR);\
+										PORTB = SPI0_SS_BIT;\
+										SPCR  = 0x50;\
+										SPSR  = 0x01
+#else
 #define SPI0_Init()						DDRB  |= SPI0_SS_BIT|SPI0_SCLK_BIT|SPI0_MOSI_BIT|LEDConn_BIT;\
 										DDRB  &= ~SPI0_MISO_BIT;\
 										PORTB = SPI0_SS_BIT;\
 										SPCR  = 0x50;\
 										SPSR  = 0x01
+#endif
 
 //ZG2100 SPI HAL
 #define ZG2100_SpiInit					SPI0_Init
