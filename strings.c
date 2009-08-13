@@ -71,5 +71,9 @@ const prog_char host[] = {"Host: "};
 // Status prefix for Twitter
 const prog_char status[] = {"status="};
 
+/* Base64 Encoder data */
+const prog_char base64Chars[] PROGMEM = {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"};
+
+
 #endif // ENABLE_CLIENT_MODE
 
