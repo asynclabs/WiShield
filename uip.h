@@ -871,8 +871,8 @@ struct uip_udp_conn *uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport);
  * \hideinitializer
  */
 #define uip_ipaddr(addr, addr0,addr1,addr2,addr3) do { \
-                     ((u16_t *)(addr))[0] = HTONS(((addr0) << 8) | (addr1)); \
-                     ((u16_t *)(addr))[1] = HTONS(((addr2) << 8) | (addr3)); \
+                     ((u16_t *)(addr))[0] = HTONS(((addr0) << 8) | (addr1 & 0x00ff)); \
+                     ((u16_t *)(addr))[1] = HTONS(((addr2) << 8) | (addr3 & 0x00ff)); \
                   } while(0)
 
 /**
