@@ -248,13 +248,17 @@ class Server: public Print
 		 * A value of -1 disables activity indication.
 		 */
 		void setIndicatorPins(int tx, int rx);
-
+	
 #ifdef ENABLE_CLIENT_MODE
 
 		/*
 		 * Called by request classes to submit themselves to the queue
 		 */
 		void submitRequest(GETrequest *req);
+	
+    	char* base64encode(char* data);
+
+	   	
 
 #endif // ENABLE_CLIENT_MODE
 

@@ -65,6 +65,8 @@ extern const prog_char userAgent[];
 extern const prog_char contentTypeForm[];
 extern const prog_char contentLength[];
 extern const prog_char status[];
+extern const prog_char base64Chars[];
+
 
 
 /* Application's callback function for serving pages */
@@ -630,6 +632,39 @@ void client_task_impl() {
 		}
 	}
 }
+
+
+char getChar(int nibble) {
+	return pgm_read_byte(base64Chars + nibble);
+}
+
+void storeBlock(char* src, char* dest, int len) {
+	
+	dest[0] = getChar(src[0] >> 2);
+	dest[1] = getChar(((src[0] & 0x03) << 4) | ((src[1] & 0xf0) >> 4));
+	dest[2] = len > 1 ? getChar(((src[1] & 0x0f) << 2) | ((src[2] & 0xc0) >> 6)) : '=';
+	dest[3] = len > 2 ? getChar(src[2] & 0x3f ) : '=';
+}
+
+char* Server::base64encode(char* data) {
+	
+	int len = strlen(data);
+	int outLenPadded = ((len + 2) / 3) << 2;
+	char* out = (char*)malloc(outLenPadded + 1);
+	
+	char* outP = out;
+	while (len > 0) {
+		
+		storeBlock(data, outP, min(len,3));
+		outP += 4;
+		data += 3;
+		len -= 3;
+	}
+	*(out + outLenPadded) = 0;
+	return out;
+}
+
+
 
 #endif // ENABLE_CLIENT_MODE
 
