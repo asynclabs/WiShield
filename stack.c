@@ -129,6 +129,18 @@ void stack_process(void)
 				}
 			}
 
+#if UIP_UDP
+	         //GregEigsti - added to get UIP_APPCALL polling working for UDP
+	         for(i = 0; i < UIP_UDP_CONNS; i++) {
+	            uip_udp_periodic(i);
+	            if(uip_len > 0) {
+	               uip_arp_out();
+	               network_send();
+	            }
+	         }
+	         //GregEigsti - added to get UIP_APPCALL polling working for UDP
+#endif /* UIP_UDP */
+
 			// if nothing to TX and the self ARP timer expired
 			// TX a broadcast ARP reply. This was implemented to
 			// cause periodic TX to prevent the AP from disconnecting
