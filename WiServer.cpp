@@ -35,7 +35,7 @@
  *****************************************************************************/
 
 
-#include "WProgram.h"
+#include <Arduino.h>
 #include "WiServer.h"
 
 extern "C" {
@@ -209,7 +209,7 @@ void Server::printTime(long t) {
 /*
  * Writes a byte to the virtual buffer for the current connection
  */
-void Server::write(uint8_t b) {
+size_t Server::write(uint8_t b) {
 
 	// Make sure there's a current connection
 	if (uip_conn) {
@@ -639,7 +639,7 @@ char getChar(int nibble) {
 }
 
 void storeBlock(char* src, char* dest, int len) {
-	
+
 	dest[0] = getChar(src[0] >> 2);
 	dest[1] = getChar(((src[0] & 0x03) << 4) | ((src[1] & 0xf0) >> 4));
 	dest[2] = len > 1 ? getChar(((src[1] & 0x0f) << 2) | ((src[2] & 0xc0) >> 6)) : '=';
@@ -647,14 +647,14 @@ void storeBlock(char* src, char* dest, int len) {
 }
 
 char* Server::base64encode(char* data) {
-	
+
 	int len = strlen(data);
 	int outLenPadded = ((len + 2) / 3) << 2;
 	char* out = (char*)malloc(outLenPadded + 1);
-	
+
 	char* outP = out;
 	while (len > 0) {
-		
+
 		storeBlock(data, outP, min(len,3));
 		outP += 4;
 		data += 3;
