@@ -195,7 +195,7 @@ class Server: public Print
 		/**
 		 * Writes a single byte to the current connection buffer
 		 */
-		virtual void write(uint8_t);
+		virtual size_t write(uint8_t);
 
 		/**
 		 * Prints a string that is stored in program memory
@@ -248,17 +248,17 @@ class Server: public Print
 		 * A value of -1 disables activity indication.
 		 */
 		void setIndicatorPins(int tx, int rx);
-	
+
 #ifdef ENABLE_CLIENT_MODE
 
 		/*
 		 * Called by request classes to submit themselves to the queue
 		 */
 		void submitRequest(GETrequest *req);
-	
+
     	char* base64encode(char* data);
 
-	   	
+
 
 #endif // ENABLE_CLIENT_MODE
 

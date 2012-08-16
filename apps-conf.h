@@ -7,7 +7,7 @@
  ******************************************************************************
 
   TCP/IP stack and driver for the WiShield 1.0 wireless devices
-
+/
   Copyright(c) 2009 Async Labs Inc. All rights reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -36,11 +36,11 @@
 #define __APPS_CONF_H__
 
 //Here we include the header file for the application(s) we use in our project.
-#define APP_WEBSERVER
+//#define APP_WEBSERVER
 //#define APP_WEBCLIENT
 //#define APP_SOCKAPP
 //#define APP_UDPAPP
-//#define APP_WISERVER
+#define APP_WISERVER
 
 #ifdef APP_WEBSERVER
 #include "webserver.h"

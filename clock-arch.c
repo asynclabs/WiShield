@@ -41,7 +41,7 @@
 #include <avr/sfr_defs.h>
 
 #include "clock-arch.h"
-#include "wiring.h"
+#include "wiring_private.h"
 
 #if 0
 //Counted time
