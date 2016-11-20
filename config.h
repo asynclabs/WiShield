@@ -41,17 +41,17 @@
 extern U8 local_ip[];
 extern U8 gateway_ip[];
 extern U8 subnet_mask[];
-extern const prog_char ssid[];
+extern const char ssid[];
 extern U8 ssid_len;
-extern const prog_char security_passphrase[];
+extern const char security_passphrase[];
 extern U8 security_passphrase_len;
 extern U8 security_type;
 extern U8 wireless_mode;
 
-extern prog_uchar wep_keys[];
+extern const unsigned char wep_keys[];
 
-extern const prog_char webpage[];
-extern const prog_char twitter[];
+extern const char webpage[];
+extern const char twitter[];
 extern unsigned char mfg_id[4];
 
 #define WIRELESS_MODE_INFRA	1

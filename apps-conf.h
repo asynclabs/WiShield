@@ -36,11 +36,11 @@
 #define __APPS_CONF_H__
 
 //Here we include the header file for the application(s) we use in our project.
-#define APP_WEBSERVER
+//#define APP_WEBSERVER
 //#define APP_WEBCLIENT
 //#define APP_SOCKAPP
 //#define APP_UDPAPP
-//#define APP_WISERVER
+#define APP_WISERVER
 
 #ifdef APP_WEBSERVER
 #include "webserver.h"

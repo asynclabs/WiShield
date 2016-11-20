@@ -1,26 +1,25 @@
-WiShield library and TCP/IP stack files for the WiShield 1.0 wireless devices
+cuhead library and TCP/IP stack files for the cuhead wifi wireless devices
 
-Async Labs Inc.
-www.asynclabs.com
 
--------------------------------------------------------------------------------
-Version 1.2.0
--------------------------------------------------------------------------------
-Changes:
-- Fixed buffer overflow issue
-- Added files for WiServer implementation
-- Removed stray debug prints from source code
-- Made sketches uniform to existing examples
-- Added missing implementation for setURL function
-- Adding support for using Digital pin 8 on Arduino as the interrupt pin for
-  WiShield
-- Added function for base64 encoding
-- Fixing IP address assignment macro
 
-New features:
-- Adding sample SocketApp sketch to demonstrate using WiShield for socket
-  communication 
-- Adding UDPApp sketch to demonstarte use of UDP protocol for communication
+LinkSprite.com
 
-Known issues:
-None
+Support Arduino IDE 1000
+
+
+To compile different samples, please choose different define in apps-conf.h
+
+//Here we include the header file for the application(s) we use in our project.
+
+
+#define APP_WEBSERVER
+
+
+//#define APP_WEBCLIENT
+
+
+//#define APP_SOCKAPP
+
+//#define APP_UDPAPP
+
+//#define APP_WISERVER

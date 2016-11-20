@@ -35,12 +35,14 @@
  *****************************************************************************/
 
 
-#include "WProgram.h"
+
 #include "WiServer.h"
+#include <Arduino.h>
+
 
 extern "C" {
     #include "g2100.h"
-	#include "spi.h"
+	#include "wi_shield_spi.h"
 	#include "uip.h"
     #include "server.h"
 	#include "global-conf.h"
@@ -54,18 +56,18 @@ extern "C" {
 #define LF 10
 
 // Strings stored in program memory (defined in strings.c)
-extern const prog_char httpOK[];
-extern const prog_char httpNotFound[];
-extern const prog_char http10[];
-extern const prog_char post[];
-extern const prog_char get[];
-extern const prog_char authBasic[];
-extern const prog_char host[];
-extern const prog_char userAgent[];
-extern const prog_char contentTypeForm[];
-extern const prog_char contentLength[];
-extern const prog_char status[];
-extern const prog_char base64Chars[];
+extern const char httpOK[] PROGMEM;
+extern const char httpNotFound[] PROGMEM;
+extern const char http10[] PROGMEM;
+extern const char post[] PROGMEM;
+extern const char get[] PROGMEM;
+extern const char authBasic[] PROGMEM;
+extern const char host[] PROGMEM;
+extern const char userAgent[] PROGMEM;
+extern const char contentTypeForm[] PROGMEM;
+extern const char contentLength[] PROGMEM;
+extern const char status[] PROGMEM;
+extern const char base64Chars[] PROGMEM;
 
 
 
@@ -79,7 +81,7 @@ char txPin = -1;
 char rxPin = -1;
 
 /* Enables basic log messages via Serial */
-boolean verbose = false;
+_boolean verbose = false;
 
 
 void Server::init(pageServingFunction function) {
@@ -152,7 +154,7 @@ void setRXPin(byte value) {
 }
 
 
-void Server::enableVerboseMode(boolean enable) {
+void Server::enableVerboseMode(_boolean enable) {
     verbose = enable;
 }
 
@@ -209,7 +211,7 @@ void Server::printTime(long t) {
 /*
  * Writes a byte to the virtual buffer for the current connection
  */
-void Server::write(uint8_t b) {
+size_t Server::write(uint8_t b) {
 
 	// Make sure there's a current connection
 	if (uip_conn) {
@@ -299,7 +301,7 @@ boolean processLine(char* data, int len) {
  * This function looks for CR/LF (or just LF) and calls processLine
  * with each line of data found.
  */
-boolean processPacket(char* data, int len) {
+_boolean processPacket(char* data, int len) {
 
 	// Address after the last byte of data
 	char* end = data + len;
@@ -361,12 +363,12 @@ void sendPage() {
 }
 
 
-boolean Server::sendInProgress() {
+_boolean Server::sendInProgress() {
 	return false; // FIX ME
 }
 
 
-boolean Server::clientIsLocal() {
+_boolean Server::clientIsLocal() {
 	// Check if there is a current connection
 	if (uip_conn != NULL) {
 		// Check if the remote host is local to the server
@@ -486,6 +488,7 @@ void sendRequest() {
 	uip_tcp_appstate_t *app = &(uip_conn->appstate);
 	GETrequest *req = (GETrequest*)app->request;
 
+	//Serial.println("Sending Request:");
 	// Reset the virtual buffer
 	app->cursor = 0;
 
@@ -498,20 +501,28 @@ void sendRequest() {
 	WiServer.print_P(isPost ? post : get);
 	WiServer.print(req->URL);
 	WiServer.println_P(http10);
+	//Serial.print(isPost ? post : get);
+	//Serial.print(req->URL);
+	//Serial.println(http10);
 
 	// Host name
 	WiServer.print_P(host);
 	WiServer.println(req->hostName);
+	//Serial.print(host);
+	//Serial.println(req->hostName);
 
 	// Auth data (if applicable)
 	if (req->auth) {
 		WiServer.print_P(authBasic);
 		WiServer.println(req->auth);
+		//Serial.print(authBasic);
+		//Serial.println(req->auth);
 	}
 
 	// User agent (WiServer, of course!)
 	WiServer.println_P(userAgent);
-
+	//Serial.println(userAgent);
+	
 	if (isPost) {
 		// Since a post has a body after the blank header line, it has to include
 		// an accurate content length so that the server knows when it has received
@@ -522,14 +533,16 @@ void sendRequest() {
 
 		// Just form data for now
 		WiServer.println_P(contentTypeForm);
-
+		//Serial.println(contentTypeForm);
 		// Content length line (with 4-space placeholder for the value)
 		WiServer.println_P(contentLength);
+		//Serial.println(contentLength);
 		// Make a note of where the place holder is so we can fill it in later
 		lengthFieldPos = app->cursor - 6; // 6 bytes for CR, LF, and 4 spaces
 
 		// Blank line to indicate end of header
 		WiServer.println();
+		//Serial.println();
 
 		// Body starts here
 		contentStart = app->cursor;
@@ -537,6 +550,7 @@ void sendRequest() {
 		// Print the body preamble if the request has one
 		if (req->bodyPreamble) {
 			WiServer.print(req->bodyPreamble);
+			//Serial.print(req->bodyPreamble);
 		}
 
 		// Have the sketch provide the body for the POST
@@ -548,13 +562,14 @@ void sendRequest() {
 		// Move the cursor back to the content length value and write in the real length
 		app->cursor = lengthFieldPos;
 		WiServer.print((int)(contentEnd - contentStart));
-
+		//Serial.print((int)(contentEnd - contentStart));
 		// Put the cursor back at the end of the body so that all of the data gets sent
 		app->cursor = contentEnd;
 
 	} else {
 		// Blank line to indicate end of GET header
 		WiServer.println();
+		//Serial.println();
 	}
 
 	// Send the 'real' bytes in the buffer

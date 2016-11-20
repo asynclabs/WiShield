@@ -38,7 +38,7 @@
 
 extern "C" {
 	#include "config.h"
-	#include "spi.h"
+	#include "wi_shield_spi.h"
 	extern unsigned char webclient_get(char *host, unsigned int port, char *file);
 }
 

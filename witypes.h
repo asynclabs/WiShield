@@ -62,11 +62,12 @@ typedef volatile unsigned long vuint32;
 
 typedef unsigned char u8;
 typedef unsigned char U8;
-typedef unsigned int u16;
+typedef unsigned int _u16;
 typedef unsigned int U16;
 typedef unsigned long u32;
 typedef unsigned long U32;
 
-typedef uint8_t boolean;
+typedef uint8_t _boolean;
+
 
 #endif /* WITYPES_H_ */
