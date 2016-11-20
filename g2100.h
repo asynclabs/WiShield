@@ -53,7 +53,7 @@
 #define ZGTOHL(a) HTOZGL(a)
 
 // Host to Zero G short
-#define HSTOZGS(a) (u16)(((a)<<8) | ((a)>>8))
+#define HSTOZGS(a) (_u16)(((a)<<8) | ((a)>>8))
 #define ZGSTOHS(a) HSTOZGS(a)
 //#define HTONS(a) HSTOZGS(a)
 
@@ -259,12 +259,12 @@ typedef struct
 
 typedef struct
 {
-    u16        rssi;                      /* the value of the G1000 RSSI when the data frame was received */
+    _u16        rssi;                      /* the value of the G1000 RSSI when the data frame was received */
     u8         dstAddr[6];    /* MAC Address to which the data frame was directed. */
     u8         srcAddr[6];    /* MAC Address of the Station that sent the Data frame. */
-    u16        arrivalTime_th;               /* the value of the 32-bit G1000 system clock when the frame arrived */
-    u16        arrivalTime_bh;
-    u16        dataLen;                   /* the length in bytes of the payload which immediately follows this data structure */
+    _u16        arrivalTime_th;               /* the value of the 32-bit G1000 system clock when the frame arrived */
+    _u16        arrivalTime_bh;
+    _u16        dataLen;                   /* the length in bytes of the payload which immediately follows this data structure */
 } zg_rx_data_ind_t;
 
 typedef struct
@@ -272,7 +272,7 @@ typedef struct
 	u8 secType;		/* security type : 0 - none; 1 - wep; 2 - wpa; 3 - wpa2; 0xff - best available */
     u8 ssidLen;		/* num valid bytes in ssid */
     u8 ssid[ZG_MAX_SSID_LENGTH];	/* the ssid of the target */
-    u16 sleepDuration;	/* power save sleep duration in units of 100 milliseconds */
+    _u16 sleepDuration;	/* power save sleep duration in units of 100 milliseconds */
     u8 modeBss;			/* 1 - infra; 2 - adhoc */
     u8 reserved;
 } zg_connect_req_t;

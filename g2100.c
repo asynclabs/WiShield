@@ -37,7 +37,7 @@
 #include "witypes.h"
 #include "config.h"
 #include "g2100.h"
-#include "spi.h"
+#include "wi_shield_spi.h"
 #include "global-conf.h"
 
 static U8 mac[6];

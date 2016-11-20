@@ -38,12 +38,12 @@ extern "C" {
   #include "global-conf.h"
   #include "network.h"
   #include "g2100.h"
-  #include "spi.h"
+  #include "wi_shield_spi.h"
   void stack_init(void);
   void stack_process(void);
 }
 
-#include "WProgram.h"
+#include <Arduino.h>
 #include "WiShield.h"
 
 void WiShield::init()

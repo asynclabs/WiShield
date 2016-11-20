@@ -33,12 +33,6 @@
 
 #ifdef ENABLE_CLIENT_MODE
 
-// IP, host name and URL for the TWEET class
-uint8 twitterIP[] = {128, 121, 146, 100};
-char twitterHost[] = {"twitter.com"};
-char twitterURL[] = {"/statuses/update.xml"};
-
-
 GETrequest::GETrequest(uint8* ipAddr, int port, char* hostName, char* URL) {
 	// Store IP address using the uIP type
 	uip_ipaddr(this->ipAddr, ipAddr[0], ipAddr[1], ipAddr[2], ipAddr[3]);
@@ -74,12 +68,9 @@ void GETrequest::submit() {
 	if (!this->active) WiServer.submitRequest(this);
 }
 
-boolean GETrequest::isActive() {	
+_boolean GETrequest::isActive() {	
 	return this->active;
 }
-
-
-
 
 POSTrequest::POSTrequest(uint8* ipAddr, int port, char* hostName, char* URL, bodyFunction body) : 
     // Create a request with the IP, port, host name and URL
@@ -90,15 +81,6 @@ POSTrequest::POSTrequest(uint8* ipAddr, int port, char* hostName, char* URL, bod
 		
 void POSTrequest::setBodyFunc(bodyFunction body) {
 	if (!this->active) this->body = body;
-}
-
-TWEETrequest::TWEETrequest(char* auth, bodyFunction message) : 
-    // Create a POST request with the Twitter-specific data
-	POSTrequest (twitterIP, 80, twitterHost, twitterURL, message) {
-		// Set the auth string
-		this->auth = auth;
-		// Automatically insert 'status=' before calling the body function
-		this->bodyPreamble = (char*)"status=";
 }
 
 #endif // ENABLE_CLIENT_MODE
